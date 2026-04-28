@@ -2,26 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #fafbfd;
+  --bg-soft: #f4f6fa;
+  --card: #ffffff;
+  --border: #e5e8ee;
+  --border-strong: #d0d6e0;
+  --hover: #f7f9fc;
+
+  --text: #1a2233;
+  --text-soft: #4a5568;
+  --text-muted: #7c8a9c;
+  --text-faint: #a8b2bf;
+
+  --primary: #1f6dc9;
+  --primary-dark: #155aab;
+  --primary-light: #4a8ed8;
+  --primary-pale: #eef4fb;
+  --primary-bg: #f7faff;
+
+  --orange: #ed8936;
+  --orange-bg: #fef5ec;
+  --green: #38a169;
+  --green-bg: #f0f9f4;
+  --yellow: #d69e2e;
+  --yellow-bg: #fdf8e9;
+  --teal: #319795;
+  --teal-bg: #ebf8f8;
+  --red: #e53e3e;
+  --red-bg: #fdf0f0;
+  --purple: #805ad5;
+  --purple-bg: #f5f0fc;
+
+  --shadow-xs: 0 1px 2px rgba(20, 50, 90, 0.04);
+  --shadow-sm: 0 2px 4px rgba(20, 50, 90, 0.06);
+  --shadow: 0 4px 12px rgba(20, 50, 90, 0.08);
+  --shadow-lg: 0 16px 40px rgba(20, 50, 90, 0.16);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Shippori Mincho', 'Noto Sans JP', serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-}
+.mono { font-family: 'JetBrains Mono', monospace; }
+.sans { font-family: 'Noto Sans JP', sans-serif; }

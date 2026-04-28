@@ -1,0 +1,69 @@
+import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import type { AttendanceEvent, AttendanceEventType } from '@/types/db'
+
+export async function POST(request: Request) {
+  try {
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+
+    if (!session) {
+      return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
+    }
+
+    const empId = session.user.app_metadata?.emp_id
+    if (!empId) {
+      return NextResponse.json({ error: '社員情報が見つかりません' }, { status: 400 })
+    }
+
+    const { type } = await request.json() as { type: AttendanceEventType }
+    const validTypes: AttendanceEventType[] = ['in', 'out', 'break_start', 'break_end']
+    if (!validTypes.includes(type)) {
+      return NextResponse.json({ error: '無効な打刻タイプです' }, { status: 400 })
+    }
+
+    const now = new Date()
+    const dateStr = now.toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' })
+
+    // 既存レコードを取得
+    const { data: existing } = await supabase
+      .from('attendance')
+      .select('id, events')
+      .eq('emp_id', empId)
+      .eq('date', dateStr)
+      .single()
+
+    const newEvent: AttendanceEvent = {
+      type,
+      time: now.toISOString(),
+      source: 'clock',
+    }
+
+    if (existing) {
+      const events = [...(existing.events as AttendanceEvent[]), newEvent]
+      const { error } = await supabase
+        .from('attendance')
+        .update({ events })
+        .eq('id', existing.id)
+
+      if (error) {
+        return NextResponse.json({ error: '打刻の保存に失敗しました' }, { status: 500 })
+      }
+
+      return NextResponse.json({ success: true, events })
+    } else {
+      const events = [newEvent]
+      const { error } = await supabase
+        .from('attendance')
+        .insert({ emp_id: empId, date: dateStr, events })
+
+      if (error) {
+        return NextResponse.json({ error: '打刻の保存に失敗しました' }, { status: 500 })
+      }
+
+      return NextResponse.json({ success: true, events })
+    }
+  } catch {
+    return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 })
+  }
+}
