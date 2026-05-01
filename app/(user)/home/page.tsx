@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { IS_DEMO, apiGetSession, apiGetAttendance, apiClock, apiCancelClock } from '@/lib/api'
 import { createClient } from '@/lib/supabase/client'
 import { calcDay, getAvailableActions, liveEvents, sortedEvents } from '@/lib/attendance'
 import { fmtTimeShort, formatMinutes, fmtDate } from '@/lib/format'
@@ -17,12 +18,11 @@ const TYPE_COLORS: Record<AttendanceEventType, string> = {
 
 export default function HomePage() {
   const [events, setEvents] = useState<AttendanceEvent[]>([])
+  const [empId, setEmpId] = useState('')
   const [loading, setLoading] = useState(true)
   const [clockingType, setClockingType] = useState<AttendanceEventType | null>(null)
   const [toast, setToast] = useState<{ msg: string; type: string } | null>(null)
   const [now, setNow] = useState(new Date())
-
-  const supabase = createClient()
 
   // リアルタイム更新
   useEffect(() => {
@@ -32,22 +32,41 @@ export default function HomePage() {
 
   // 初回データ取得
   const fetchToday = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) return
+    let currentEmpId = ''
 
-    const empId = session.user.app_metadata?.emp_id
+    if (IS_DEMO) {
+      const sessRes = await apiGetSession()
+      const sessData = await sessRes.json()
+      if (!sessData.session || sessData.session.type !== 'user') return
+      currentEmpId = sessData.session.empId
+    } else {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+      currentEmpId = session.user.app_metadata?.emp_id
+    }
+
+    setEmpId(currentEmpId)
     const dateStr = fmtDate(new Date())
 
-    const { data } = await supabase
-      .from('attendance')
-      .select('events')
-      .eq('emp_id', empId)
-      .eq('date', dateStr)
-      .single()
+    if (IS_DEMO) {
+      const res = await apiGetAttendance(currentEmpId, dateStr, dateStr)
+      const data = await res.json()
+      const rec = data.data?.[0]
+      setEvents(rec?.events as AttendanceEvent[] || [])
+    } else {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('attendance')
+        .select('events')
+        .eq('emp_id', currentEmpId)
+        .eq('date', dateStr)
+        .single()
+      setEvents(data?.events as AttendanceEvent[] || [])
+    }
 
-    setEvents(data?.events as AttendanceEvent[] || [])
     setLoading(false)
-  }, [supabase])
+  }, [])
 
   useEffect(() => {
     fetchToday()
@@ -57,11 +76,16 @@ export default function HomePage() {
   const handleClock = async (type: AttendanceEventType) => {
     setClockingType(type)
     try {
-      const res = await fetch('/api/attendance/clock', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type }),
-      })
+      let res: Response
+      if (IS_DEMO) {
+        res = await apiClock(empId, type)
+      } else {
+        res = await fetch('/api/attendance/clock', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type }),
+        })
+      }
       const data = await res.json()
       if (res.ok) {
         setEvents(data.events)
@@ -78,11 +102,16 @@ export default function HomePage() {
   // LIFOキャンセル
   const handleCancel = async (type: AttendanceEventType) => {
     try {
-      const res = await fetch('/api/attendance/cancel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type }),
-      })
+      let res: Response
+      if (IS_DEMO) {
+        res = await apiCancelClock(empId, type)
+      } else {
+        res = await fetch('/api/attendance/cancel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type }),
+        })
+      }
       const data = await res.json()
       if (res.ok) {
         setEvents(data.events)

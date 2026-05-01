@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { IS_DEMO, apiGetSession, apiGetAttendance } from '@/lib/api'
 import { createClient } from '@/lib/supabase/client'
 import { calcDay, liveEvents, sortedEvents } from '@/lib/attendance'
 import { fmtTimeShort, formatMinutes } from '@/lib/format'
@@ -19,33 +20,54 @@ export default function HistoryPage() {
   const [records, setRecords] = useState<Record<string, Attendance>>({})
   const [loading, setLoading] = useState(true)
   const [detailDate, setDetailDate] = useState<string | null>(null)
-
-  const supabase = createClient()
+  const [empId, setEmpId] = useState('')
 
   const fetchMonth = useCallback(async () => {
     setLoading(true)
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) return
+    let currentEmpId = empId
 
-    const empId = session.user.app_metadata?.emp_id
+    if (!currentEmpId) {
+      if (IS_DEMO) {
+        const sessRes = await apiGetSession()
+        const sessData = await sessRes.json()
+        if (!sessData.session || sessData.session.type !== 'user') return
+        currentEmpId = sessData.session.empId
+      } else {
+        const supabase = createClient()
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) return
+        currentEmpId = session.user.app_metadata?.emp_id
+      }
+      setEmpId(currentEmpId)
+    }
+
     const [y, m] = monthStr.split('-').map(Number)
     const startDate = `${y}-${String(m).padStart(2, '0')}-01`
     const lastDay = new Date(y, m, 0).getDate()
     const endDate = `${y}-${String(m).padStart(2, '0')}-${lastDay}`
 
-    const { data } = await supabase
-      .from('attendance')
-      .select('*')
-      .eq('emp_id', empId)
-      .gte('date', startDate)
-      .lte('date', endDate)
-      .order('date')
+    if (IS_DEMO) {
+      const res = await apiGetAttendance(currentEmpId, startDate, endDate)
+      const data = await res.json()
+      const map: Record<string, Attendance> = {}
+      data.data?.forEach((r: Attendance) => { map[r.date] = r })
+      setRecords(map)
+    } else {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('attendance')
+        .select('*')
+        .eq('emp_id', currentEmpId)
+        .gte('date', startDate)
+        .lte('date', endDate)
+        .order('date')
+      const map: Record<string, Attendance> = {}
+      data?.forEach(r => { map[r.date] = r as Attendance })
+      setRecords(map)
+    }
 
-    const map: Record<string, Attendance> = {}
-    data?.forEach(r => { map[r.date] = r as Attendance })
-    setRecords(map)
     setLoading(false)
-  }, [supabase, monthStr])
+  }, [monthStr, empId])
 
   useEffect(() => {
     fetchMonth()

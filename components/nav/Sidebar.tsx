@@ -29,7 +29,7 @@ export default function Sidebar({ pendingCount }: SidebarProps) {
   ]
 
   return (
-    <aside className="bg-card border-r border-border py-4 flex flex-col sticky top-[60px] h-[calc(100vh-60px)] overflow-y-auto w-[200px] flex-shrink-0">
+    <aside className="bg-card border-r border-border py-4 flex flex-col sticky top-[60px] h-[calc(100vh-60px)] overflow-y-auto w-[220px] flex-shrink-0">
       <div>
         <div className="px-[22px] py-[10px] pb-1.5 text-[10px] font-mono font-bold tracking-[0.16em] uppercase" style={{ color: 'var(--text-faint)' }}>
           MENU

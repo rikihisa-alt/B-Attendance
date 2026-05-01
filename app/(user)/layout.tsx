@@ -1,30 +1,34 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
+'use client'
+
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Header from '@/components/nav/Header'
 import Sidebar from '@/components/nav/Sidebar'
+import { useSession } from '@/hooks/useSession'
 
-export default async function UserLayout({
+export default function UserLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const supabase = createClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const { empId, userName, role, loading } = useSession()
+  const router = useRouter()
 
-  if (!session) {
-    redirect('/login')
+  useEffect(() => {
+    if (!loading && !userName) {
+      router.push('/login')
+    }
+  }, [loading, userName, router])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
+        <span className="text-[13px]" style={{ color: 'var(--text-muted)' }}>読み込み中...</span>
+      </div>
+    )
   }
 
-  const empId = session.user.app_metadata?.emp_id || ''
-
-  // 従業員情報を取得
-  const { data: emp } = await supabase
-    .from('employees')
-    .select('name')
-    .eq('id', empId)
-    .single()
-
-  const userName = emp?.name || empId
+  if (!userName) return null
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>

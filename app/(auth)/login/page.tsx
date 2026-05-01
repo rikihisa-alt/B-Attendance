@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { IS_DEMO, apiLoginUser, apiLoginAdmin, apiChangePassword } from '@/lib/api'
 import { createClient } from '@/lib/supabase/client'
 
 type Tab = 'user' | 'admin'
@@ -48,31 +49,45 @@ export default function LoginPage() {
     setUserLoading(true)
 
     try {
-      const supabase = createClient()
-      const email = `${empId.toUpperCase()}@b-attendance.local`
-
-      const { error } = await supabase.auth.signInWithPassword({ email, password: empPw })
-      if (error) {
-        setUserError('社員IDまたはパスワードが正しくありません')
-        setUserLoading(false)
-        return
+      if (IS_DEMO) {
+        const res = await apiLoginUser(empId.toUpperCase(), empPw)
+        const data = await res.json()
+        if (!res.ok) {
+          setUserError(data.error || '社員IDまたはパスワードが正しくありません')
+          setUserLoading(false)
+          return
+        }
+        // first_login チェック
+        if (data.employee?.first_login) {
+          setCurrentEmpId(empId.toUpperCase())
+          setShowFirstLogin(true)
+          setUserLoading(false)
+          return
+        }
+        router.push('/home')
+      } else {
+        const supabase = createClient()
+        const email = `${empId.toUpperCase()}@b-attendance.local`
+        const { error } = await supabase.auth.signInWithPassword({ email, password: empPw })
+        if (error) {
+          setUserError('社員IDまたはパスワードが正しくありません')
+          setUserLoading(false)
+          return
+        }
+        // first_login チェック
+        const { data: emp } = await supabase
+          .from('employees')
+          .select('first_login')
+          .eq('id', empId.toUpperCase())
+          .single()
+        if (emp?.first_login) {
+          setCurrentEmpId(empId.toUpperCase())
+          setShowFirstLogin(true)
+          setUserLoading(false)
+          return
+        }
+        router.push('/home')
       }
-
-      // first_login チェック
-      const { data: emp } = await supabase
-        .from('employees')
-        .select('first_login')
-        .eq('id', empId.toUpperCase())
-        .single()
-
-      if (emp?.first_login) {
-        setCurrentEmpId(empId.toUpperCase())
-        setShowFirstLogin(true)
-        setUserLoading(false)
-        return
-      }
-
-      router.push('/home')
     } catch {
       setUserError('ログインに失敗しました')
       setUserLoading(false)
@@ -100,27 +115,31 @@ export default function LoginPage() {
     setFirstLoginLoading(true)
 
     try {
-      const supabase = createClient()
-
-      // Supabase Auth のパスワード更新
-      const { error: authError } = await supabase.auth.updateUser({ password: newPw })
-      if (authError) {
-        setFirstLoginError('パスワードの変更に失敗しました')
-        setFirstLoginLoading(false)
-        return
+      if (IS_DEMO) {
+        const res = await apiChangePassword(currentEmpId, empPw, newPw)
+        const data = await res.json()
+        if (!res.ok) {
+          setFirstLoginError(data.error || 'パスワードの変更に失敗しました')
+          setFirstLoginLoading(false)
+          return
+        }
+        setShowFirstLogin(false)
+        router.push('/home')
+      } else {
+        const supabase = createClient()
+        const { error: authError } = await supabase.auth.updateUser({ password: newPw })
+        if (authError) {
+          setFirstLoginError('パスワードの変更に失敗しました')
+          setFirstLoginLoading(false)
+          return
+        }
+        await supabase
+          .from('employees')
+          .update({ first_login: false, pw_changed_at: new Date().toISOString() })
+          .eq('id', currentEmpId)
+        setShowFirstLogin(false)
+        router.push('/home')
       }
-
-      // employees テーブルの first_login と pw_changed_at を更新
-      await supabase
-        .from('employees')
-        .update({
-          first_login: false,
-          pw_changed_at: new Date().toISOString(),
-        })
-        .eq('id', currentEmpId)
-
-      setShowFirstLogin(false)
-      router.push('/home')
     } catch {
       setFirstLoginError('処理に失敗しました')
       setFirstLoginLoading(false)
@@ -134,19 +153,13 @@ export default function LoginPage() {
     setAdminLoading(true)
 
     try {
-      const res = await fetch('/api/admin/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: adminPw }),
-      })
-
+      const res = await apiLoginAdmin(adminPw)
       const data = await res.json()
       if (!res.ok) {
         setAdminError(data.error || '認証に失敗しました')
         setAdminLoading(false)
         return
       }
-
       router.push('/admin/dashboard')
     } catch {
       setAdminError('認証処理でエラーが発生しました')
@@ -213,8 +226,23 @@ export default function LoginPage() {
           </ul>
         </div>
 
+        {/* デモモード案内 */}
+        {IS_DEMO && (
+          <div className="mx-8 mt-5 px-4 py-3 rounded-lg text-[12px]" style={{
+            background: 'var(--orange-bg)', border: '1px solid var(--orange)',
+            borderLeft: '3px solid var(--orange)', color: 'var(--text)',
+          }}>
+            <div className="font-bold mb-1" style={{ color: 'var(--orange)' }}>DEMO MODE</div>
+            <div style={{ color: 'var(--text-soft)' }}>
+              <div>従業員: <span className="font-mono font-bold">EMP001</span> / <span className="font-mono font-bold">pass</span>（山田太郎）</div>
+              <div>従業員: <span className="font-mono font-bold">EMP002</span> / <span className="font-mono font-bold">pass</span>（佐藤花子・初回ログイン）</div>
+              <div>管理者: <span className="font-mono font-bold">admin</span></div>
+            </div>
+          </div>
+        )}
+
         {/* タブ */}
-        <div className="grid grid-cols-2 border-b border-border">
+        <div className="grid grid-cols-2 border-b border-border" style={{ marginTop: IS_DEMO ? '0' : '0' }}>
           {(['user', 'admin'] as Tab[]).map(t => (
             <button
               key={t}

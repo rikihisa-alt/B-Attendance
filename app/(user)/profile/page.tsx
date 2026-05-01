@@ -1,17 +1,17 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { IS_DEMO, apiGetSession, apiGetEmployee, apiGetAttendance, apiGetCorrections, apiGetLeaves, apiUpdateEmployee, apiChangePassword } from '@/lib/api'
 import { createClient } from '@/lib/supabase/client'
 import { calcDay } from '@/lib/attendance'
-import { formatMinutes, fmtDate } from '@/lib/format'
+import { formatMinutes } from '@/lib/format'
 import type { Employee, AttendanceEvent } from '@/types/db'
 import { ChevronDown } from 'lucide-react'
 
 export default function ProfilePage() {
-  const supabase = createClient()
-
   const [emp, setEmp] = useState<Employee | null>(null)
   const [loading, setLoading] = useState(true)
+  const [empId, setEmpId] = useState('')
 
   // 統計
   const [monthWorked, setMonthWorked] = useState(0)
@@ -49,25 +49,49 @@ export default function ProfilePage() {
   }
 
   const fetchData = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) return
+    let currentEmpId = ''
 
-    const empId = session.user.app_metadata?.emp_id
+    if (IS_DEMO) {
+      const sessRes = await apiGetSession()
+      const sessData = await sessRes.json()
+      if (!sessData.session || sessData.session.type !== 'user') return
+      currentEmpId = sessData.session.empId
+    } else {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+      currentEmpId = session.user.app_metadata?.emp_id
+    }
+
+    setEmpId(currentEmpId)
 
     // 従業員情報
-    const { data: empData } = await supabase
-      .from('employees')
-      .select('*')
-      .eq('id', empId)
-      .single()
-
-    if (empData) {
-      const e = empData as Employee
-      setEmp(e)
-      setEditName(e.name)
-      setEditKana(e.kana || '')
-      setEditBirthday(e.birthday || '')
-      setPaidLeaveRemaining(e.paid_leave_total - e.paid_leave_used)
+    if (IS_DEMO) {
+      const res = await apiGetEmployee(currentEmpId)
+      const data = await res.json()
+      if (data.data) {
+        const e = data.data as Employee
+        setEmp(e)
+        setEditName(e.name)
+        setEditKana(e.kana || '')
+        setEditBirthday(e.birthday || '')
+        setPaidLeaveRemaining(e.paid_leave_total - e.paid_leave_used)
+      }
+    } else {
+      const supabase = createClient()
+      const { data: empData } = await supabase
+        .from('employees')
+        .select('*')
+        .eq('id', currentEmpId)
+        .single()
+      if (empData) {
+        const e = empData as Employee
+        setEmp(e)
+        setEditName(e.name)
+        setEditKana(e.kana || '')
+        setEditBirthday(e.birthday || '')
+        setPaidLeaveRemaining(e.paid_leave_total - e.paid_leave_used)
+      }
     }
 
     // 今月の勤怠
@@ -76,44 +100,65 @@ export default function ProfilePage() {
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
     const monthEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${lastDay}`
 
-    const { data: monthData } = await supabase
-      .from('attendance')
-      .select('events')
-      .eq('emp_id', empId)
-      .gte('date', monthStart)
-      .lte('date', monthEnd)
-
     let worked = 0
     let overtime = 0
-    const standardMin = 8 * 60 // デフォルト
-    monthData?.forEach(r => {
-      const calc = calcDay(r.events as AttendanceEvent[])
-      if (calc.totalWorked > 0) {
-        worked += calc.totalWorked
-        if (calc.totalWorked > standardMin) {
-          overtime += (calc.totalWorked - standardMin)
+    const standardMin = 8 * 60
+
+    if (IS_DEMO) {
+      const res = await apiGetAttendance(currentEmpId, monthStart, monthEnd)
+      const data = await res.json()
+      data.data?.forEach((r: { events: AttendanceEvent[] }) => {
+        const calc = calcDay(r.events)
+        if (calc.totalWorked > 0) {
+          worked += calc.totalWorked
+          if (calc.totalWorked > standardMin) overtime += (calc.totalWorked - standardMin)
         }
-      }
-    })
+      })
+    } else {
+      const supabase = createClient()
+      const { data: monthData } = await supabase
+        .from('attendance')
+        .select('events')
+        .eq('emp_id', currentEmpId)
+        .gte('date', monthStart)
+        .lte('date', monthEnd)
+      monthData?.forEach(r => {
+        const calc = calcDay(r.events as AttendanceEvent[])
+        if (calc.totalWorked > 0) {
+          worked += calc.totalWorked
+          if (calc.totalWorked > standardMin) overtime += (calc.totalWorked - standardMin)
+        }
+      })
+    }
     setMonthWorked(worked)
     setMonthOvertime(overtime)
 
     // 承認待ち件数
-    const { count: corrCount } = await supabase
-      .from('correction_requests')
-      .select('*', { count: 'exact', head: true })
-      .eq('emp_id', empId)
-      .eq('status', 'pending')
+    if (IS_DEMO) {
+      const [corrRes, leaveRes] = await Promise.all([
+        apiGetCorrections(currentEmpId, 'pending'),
+        apiGetLeaves(currentEmpId, 'pending'),
+      ])
+      const corrData = await corrRes.json()
+      const leaveData = await leaveRes.json()
+      setPendingCount((corrData.data?.length || 0) + (leaveData.data?.length || 0))
+    } else {
+      const supabase = createClient()
+      const { count: corrCount } = await supabase
+        .from('correction_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('emp_id', currentEmpId)
+        .eq('status', 'pending')
+      const { count: leaveCount } = await supabase
+        .from('leave_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('emp_id', currentEmpId)
+        .eq('status', 'pending')
+      setPendingCount((corrCount || 0) + (leaveCount || 0))
+    }
 
-    const { count: leaveCount } = await supabase
-      .from('leave_requests')
-      .select('*', { count: 'exact', head: true })
-      .eq('emp_id', empId)
-      .eq('status', 'pending')
-
-    setPendingCount((corrCount || 0) + (leaveCount || 0))
     setLoading(false)
-  }, [supabase])
+  }, [])
 
   useEffect(() => {
     fetchData()
@@ -124,20 +169,30 @@ export default function ProfilePage() {
     if (!emp) return
     setSaving(true)
 
-    const { error } = await supabase
-      .from('employees')
-      .update({
+    if (IS_DEMO) {
+      await apiUpdateEmployee(emp.id, {
         name: editName,
         kana: editKana || null,
         birthday: editBirthday || null,
       })
-      .eq('id', emp.id)
-
-    if (error) {
-      showToast('保存に失敗しました', 'error')
-    } else {
       showToast('プロフィールを更新しました', 'success')
       setEmp({ ...emp, name: editName, kana: editKana || null, birthday: editBirthday || null })
+    } else {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('employees')
+        .update({
+          name: editName,
+          kana: editKana || null,
+          birthday: editBirthday || null,
+        })
+        .eq('id', emp.id)
+      if (error) {
+        showToast('保存に失敗しました', 'error')
+      } else {
+        showToast('プロフィールを更新しました', 'success')
+        setEmp({ ...emp, name: editName, kana: editKana || null, birthday: editBirthday || null })
+      }
     }
     setSaving(false)
   }
@@ -159,32 +214,41 @@ export default function ProfilePage() {
 
     setSaving(true)
 
-    // 現在のパスワードで再認証
-    const email = `${emp!.id}@b-attendance.local`
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password: currentPw,
-    })
-    if (signInError) {
-      showToast('現在のパスワードが正しくありません', 'error')
-      setSaving(false)
-      return
+    if (IS_DEMO) {
+      const res = await apiChangePassword(empId, currentPw, newPw)
+      const data = await res.json()
+      if (!res.ok) {
+        showToast(data.error || 'パスワードの変更に失敗しました', 'error')
+        setSaving(false)
+        return
+      }
+      showToast('パスワードを変更しました', 'success')
+    } else {
+      const supabase = createClient()
+      // 現在のパスワードで再認証
+      const email = `${emp!.id}@b-attendance.local`
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password: currentPw,
+      })
+      if (signInError) {
+        showToast('現在のパスワードが正しくありません', 'error')
+        setSaving(false)
+        return
+      }
+      const { error } = await supabase.auth.updateUser({ password: newPw })
+      if (error) {
+        showToast('パスワードの変更に失敗しました', 'error')
+        setSaving(false)
+        return
+      }
+      await supabase
+        .from('employees')
+        .update({ pw_changed_at: new Date().toISOString() })
+        .eq('id', emp!.id)
+      showToast('パスワードを変更しました', 'success')
     }
 
-    const { error } = await supabase.auth.updateUser({ password: newPw })
-    if (error) {
-      showToast('パスワードの変更に失敗しました', 'error')
-      setSaving(false)
-      return
-    }
-
-    // pw_changed_at を更新
-    await supabase
-      .from('employees')
-      .update({ pw_changed_at: new Date().toISOString() })
-      .eq('id', emp!.id)
-
-    showToast('パスワードを変更しました', 'success')
     setCurrentPw('')
     setNewPw('')
     setNewPwConfirm('')

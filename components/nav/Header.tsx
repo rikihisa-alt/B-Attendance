@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { LogOut } from 'lucide-react'
+import { apiLogout, IS_DEMO } from '@/lib/api'
 
 interface HeaderProps {
   userName: string
@@ -29,7 +30,11 @@ export default function Header({ userName, role, empId }: HeaderProps) {
   }
 
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' })
+    if (IS_DEMO) {
+      await apiLogout()
+    } else {
+      await fetch('/api/auth/logout', { method: 'POST' })
+    }
     router.push('/login')
     router.refresh()
   }
@@ -42,13 +47,16 @@ export default function Header({ userName, role, empId }: HeaderProps) {
     >
       {/* ロゴ */}
       <div
-        className="flex items-center gap-3 cursor-pointer select-none px-2 py-1 -ml-2 rounded-lg transition-colors hover:bg-hover"
+        className="flex items-center gap-[12px] cursor-pointer select-none py-1 px-2 -ml-2 rounded-lg"
+        style={{ transition: 'background 0.15s ease' }}
+        onMouseEnter={e => e.currentTarget.style.background = 'var(--hover)'}
+        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
         onClick={handleBrandClick}
       >
         <div className="flex flex-col leading-tight">
-          <span className="text-[17px] font-bold tracking-wide">B-Attendance</span>
+          <span className="text-[17px] font-bold" style={{ letterSpacing: '0.03em' }}>B-Attendance</span>
           <span className="text-[10px] font-mono tracking-[0.15em]" style={{ color: 'var(--text-muted)' }}>
-            ATTENDANCE SYSTEM
+            {role === 'admin' ? 'ADMIN PORTAL' : 'USER PORTAL'}
           </span>
         </div>
       </div>
@@ -57,8 +65,8 @@ export default function Header({ userName, role, empId }: HeaderProps) {
       <div className="flex items-center gap-3">
         {/* 時計 */}
         <div
-          className="font-mono text-[13px] tracking-wide px-3 py-[7px] rounded-md border border-border"
-          style={{ color: 'var(--primary)', background: 'var(--primary-bg)', letterSpacing: '0.06em' }}
+          className="font-mono text-[13px] px-3 py-[7px] rounded-md"
+          style={{ color: 'var(--primary)', background: 'var(--primary-bg)', border: '1px solid var(--border)', letterSpacing: '0.06em', borderRadius: '6px' }}
         >
           {clock}
         </div>
@@ -82,8 +90,13 @@ export default function Header({ userName, role, empId }: HeaderProps) {
         {/* ログアウト */}
         <button
           onClick={handleLogout}
-          className="bg-card border border-border-strong px-3.5 py-[7px] font-mincho text-[12px] font-semibold cursor-pointer rounded-md transition-all flex items-center gap-1.5 hover:bg-accent-red-bg hover:text-accent-red hover:border-accent-red"
-          style={{ color: 'var(--text)' }}
+          className="px-3.5 py-[7px] text-[12px] font-semibold cursor-pointer rounded-md transition-all flex items-center gap-1.5"
+          style={{
+            background: 'var(--card)', color: 'var(--text)',
+            border: '1px solid var(--border-strong)', fontFamily: 'inherit',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--red-bg)'; e.currentTarget.style.color = 'var(--red)'; e.currentTarget.style.borderColor = 'var(--red)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'var(--card)'; e.currentTarget.style.color = 'var(--text)'; e.currentTarget.style.borderColor = 'var(--border-strong)' }}
         >
           <LogOut size={14} />
           ログアウト

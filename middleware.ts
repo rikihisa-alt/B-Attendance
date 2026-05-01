@@ -3,9 +3,15 @@ import { createServerClient } from '@supabase/ssr'
 import { jwtVerify } from 'jose'
 
 const ADMIN_COOKIE_NAME = 'b-attendance-admin'
+const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === 'true'
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  // DEMO_MODE: auth チェックをスキップ（クライアント側でセッション管理）
+  if (IS_DEMO) {
+    return NextResponse.next()
+  }
 
   // Supabase session refresh（全リクエストで必要）
   const response = NextResponse.next({ request: { headers: request.headers } })
