@@ -1,80 +1,65 @@
 'use client'
 
 import { usePathname, useRouter } from 'next/navigation'
-import { Clock, List, FileEdit, Calendar, User } from 'lucide-react'
-import { ReactNode } from 'react'
-
-interface NavItem {
-  href: string
-  icon: ReactNode
-  labelJa: string
-  labelEn: string
-  badge?: number
-}
 
 interface SidebarProps {
   pendingCount?: number
+}
+
+interface NavItem {
+  href: string
+  iconId: string
+  labelJa: string
+  labelEn: string
+  badge?: number
 }
 
 export default function Sidebar({ pendingCount }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
 
-  const items: NavItem[] = [
-    { href: '/home', icon: <Clock size={14} />, labelJa: '打刻', labelEn: 'CLOCK' },
-    { href: '/history', icon: <List size={14} />, labelJa: '勤怠履歴', labelEn: 'HISTORY' },
-    { href: '/requests', icon: <FileEdit size={14} />, labelJa: '修正申請', labelEn: 'REQUESTS' },
-    { href: '/leaves', icon: <Calendar size={14} />, labelJa: '休暇申請', labelEn: 'LEAVES', badge: pendingCount },
-    { href: '/profile', icon: <User size={14} />, labelJa: 'マイページ', labelEn: 'PROFILE' },
+  const workItems: NavItem[] = [
+    { href: '/home', iconId: 'i-clock', labelJa: '打刻', labelEn: 'CLOCK' },
+    { href: '/history', iconId: 'i-list', labelJa: '勤怠履歴', labelEn: 'HISTORY' },
+    { href: '/requests', iconId: 'i-edit', labelJa: '修正申請', labelEn: 'REQUESTS' },
+    { href: '/leaves', iconId: 'i-calendar', labelJa: '休暇申請', labelEn: 'LEAVES', badge: pendingCount },
+  ]
+  const accountItems: NavItem[] = [
+    { href: '/profile', iconId: 'i-user', labelJa: 'マイページ', labelEn: 'MY PROFILE' },
   ]
 
-  return (
-    <aside className="bg-card border-r border-border py-4 flex flex-col sticky top-[60px] h-[calc(100vh-60px)] overflow-y-auto w-[220px] flex-shrink-0">
-      <div>
-        <div className="px-[22px] py-[10px] pb-1.5 text-[10px] font-mono font-bold tracking-[0.16em] uppercase" style={{ color: 'var(--text-faint)' }}>
-          MENU
-        </div>
-        {items.map(item => {
-          const isActive = pathname === item.href
-          return (
-            <button
-              key={item.href}
-              onClick={() => router.push(item.href)}
-              className={`flex items-center justify-between w-full text-left px-[22px] py-[10px] text-[13px] font-medium cursor-pointer transition-all border-none bg-transparent ${
-                isActive ? 'font-bold' : ''
-              }`}
-              style={{
-                color: isActive ? 'var(--primary)' : 'var(--text-soft)',
-                background: isActive ? 'var(--primary-pale)' : 'transparent',
-                borderLeft: `3px solid ${isActive ? 'var(--primary)' : 'transparent'}`,
-                fontFamily: 'inherit',
-              }}
-            >
-              <span className="flex items-center gap-2.5">
-                {item.icon}
-                <span className="flex flex-col leading-tight">
-                  <span className="text-[13px]">{item.labelJa}</span>
-                  <span
-                    className="text-[9px] font-mono tracking-[0.12em]"
-                    style={{ color: isActive ? 'var(--primary-light)' : 'var(--text-faint)' }}
-                  >
-                    {item.labelEn}
-                  </span>
-                </span>
-              </span>
-              {item.badge && item.badge > 0 ? (
-                <span className="text-white text-[10px] font-mono font-bold rounded-xl px-[7px] py-[2px] min-w-[20px] text-center" style={{ background: 'var(--orange)' }}>
-                  {item.badge}
-                </span>
-              ) : null}
-            </button>
-          )
-        })}
-      </div>
+  const renderItem = (item: NavItem) => {
+    const isActive = pathname === item.href
+    return (
+      <button
+        key={item.href}
+        type="button"
+        className={`nav-item${isActive ? ' active' : ''}`}
+        onClick={() => router.push(item.href)}
+      >
+        <span className="nav-item-content">
+          <svg className="icon-svg-sm"><use href={`#${item.iconId}`} /></svg>
+          <span className="nav-item-text">
+            <span className="ja">{item.labelJa}</span>
+            <span className="en">{item.labelEn}</span>
+          </span>
+        </span>
+        {item.badge && item.badge > 0 ? <span className="nav-badge">{item.badge}</span> : null}
+      </button>
+    )
+  }
 
-      <div className="mt-auto pt-3.5 px-[22px] border-t border-border font-mono text-[9px] text-center tracking-[0.1em]" style={{ color: 'var(--text-faint)' }}>
-        B-Attendance v2.0
+  return (
+    <aside className="sidebar">
+      <div className="sidebar-section">
+        <div className="nav-section-label">勤怠 / WORK</div>
+        {workItems.map(renderItem)}
       </div>
+      <div className="sidebar-section">
+        <div className="nav-section-label">アカウント / ACCOUNT</div>
+        {accountItems.map(renderItem)}
+      </div>
+      <div className="sidebar-footer">B-ATTENDANCE / V1.0</div>
     </aside>
   )
 }

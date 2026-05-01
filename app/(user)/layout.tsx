@@ -31,13 +31,11 @@ export default function UserLayout({
   if (!userName) return null
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+    <div className="app-shell">
       <Header userName={userName} role="user" empId={empId} />
-      <div className="flex">
+      <div className="app-body">
         <Sidebar />
-        <main className="flex-1 px-7 py-[22px] pb-[60px] max-w-[1500px]">
-          {children}
-        </main>
+        <main className="main">{children}</main>
       </div>
     </div>
   )
