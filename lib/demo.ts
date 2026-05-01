@@ -1,12 +1,17 @@
 // DEMO_MODE: Supabase なしでアプリ全機能をテストするためのインメモリDB
-// 環境変数 NEXT_PUBLIC_DEMO_MODE=true で有効化
+// 有効化条件:
+//   1. 明示: NEXT_PUBLIC_DEMO_MODE=true
+//   2. 自動: NEXT_PUBLIC_SUPABASE_URL が未設定（Supabase 立ち上げ前のフォールバック）
+// 本番運用時は NEXT_PUBLIC_SUPABASE_URL を設定すれば自動でデモモードが切れる。
 
 import type {
   Employee, Attendance, AttendanceEvent,
   CorrectionRequest, LeaveRequest, Settings,
 } from '@/types/db'
 
-export const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === 'true'
+export const IS_DEMO =
+  process.env.NEXT_PUBLIC_DEMO_MODE === 'true' ||
+  !process.env.NEXT_PUBLIC_SUPABASE_URL
 
 // ダミー従業員
 const DEMO_EMPLOYEES: Employee[] = [

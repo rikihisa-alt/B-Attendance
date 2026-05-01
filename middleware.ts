@@ -3,7 +3,11 @@ import { createServerClient } from '@supabase/ssr'
 import { jwtVerify } from 'jose'
 
 const ADMIN_COOKIE_NAME = 'b-attendance-admin'
-const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === 'true'
+// IS_DEMO の判定は lib/demo.ts と同期。Supabase URL が無いと middleware が
+// クラッシュするため、未設定時は強制的にデモモード扱いにする。
+const IS_DEMO =
+  process.env.NEXT_PUBLIC_DEMO_MODE === 'true' ||
+  !process.env.NEXT_PUBLIC_SUPABASE_URL
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl

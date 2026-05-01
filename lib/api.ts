@@ -1,7 +1,10 @@
 // 統一API呼び出しヘルパー
 // DEMO_MODE の時は /api/demo に、通常時は各APIに振り分け
 
-const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === 'true'
+// IS_DEMO の判定は lib/demo.ts と同期させる（Supabase URL 未設定で自動 fallback）
+const IS_DEMO =
+  process.env.NEXT_PUBLIC_DEMO_MODE === 'true' ||
+  !process.env.NEXT_PUBLIC_SUPABASE_URL
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function demoCall(action: string, params: Record<string, any> = {}) {
