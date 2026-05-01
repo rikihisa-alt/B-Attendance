@@ -10,7 +10,7 @@ type Tab = 'user' | 'admin'
 
 export default function LoginPage() {
   const router = useRouter()
-  const [tab, setTab] = useState<Tab>('user')
+  const [tab, setTab] = useState<Tab>('admin')
   const [clock, setClock] = useState('--:--:--')
 
   const [empId, setEmpId] = useState('')
@@ -223,12 +223,6 @@ export default function LoginPage() {
                   <button type="submit" className="btn btn-primary btn-block" disabled={userLoading}>
                     {userLoading ? 'ログイン中...' : 'ログイン / Sign in'}
                   </button>
-                  {IS_DEMO && (
-                    <div className="form-help">
-                      DEMO: <code>EMP001</code> / <code>pass</code><br />
-                      DEMO: <code>EMP002</code> / <code>pass</code>
-                    </div>
-                  )}
                 </form>
               ) : (
                 <form className="login-form" onSubmit={handleAdminLogin}>
@@ -263,11 +257,6 @@ export default function LoginPage() {
                   <button type="submit" className="btn btn-primary btn-block" disabled={adminLoading}>
                     {adminLoading ? 'ログイン中...' : '管理者ログイン / Admin sign in'}
                   </button>
-                  {IS_DEMO && (
-                    <div className="form-help">
-                      DEMO: <code>ADMIN</code> / <code>admin</code>
-                    </div>
-                  )}
                 </form>
               )}
             </div>

@@ -5,7 +5,7 @@
 // 本番運用時は NEXT_PUBLIC_SUPABASE_URL を設定すれば自動でデモモードが切れる。
 
 import type {
-  Employee, Attendance, AttendanceEvent,
+  Employee, Attendance,
   CorrectionRequest, LeaveRequest, Settings,
 } from '@/types/db'
 
@@ -13,30 +13,8 @@ export const IS_DEMO =
   process.env.NEXT_PUBLIC_DEMO_MODE === 'true' ||
   !process.env.NEXT_PUBLIC_SUPABASE_URL
 
-// ダミー従業員
-const DEMO_EMPLOYEES: Employee[] = [
-  {
-    id: 'EMP001', auth_user_id: 'demo-001', name: '山田太郎', kana: 'やまだ たろう',
-    birthday: '1990-04-15', dept: '開発部', position: '主任',
-    status: 'active', paid_leave_total: 15, paid_leave_used: 3,
-    first_login: false, pw_changed_at: '2026-01-10T10:00:00Z', pw_reset_at: null,
-    created_at: '2025-04-01T00:00:00Z', updated_at: '2026-04-01T00:00:00Z',
-  },
-  {
-    id: 'EMP002', auth_user_id: 'demo-002', name: '佐藤花子', kana: 'さとう はなこ',
-    birthday: '1995-08-22', dept: '営業部', position: null,
-    status: 'active', paid_leave_total: 10, paid_leave_used: 1,
-    first_login: true, pw_changed_at: null, pw_reset_at: null,
-    created_at: '2025-06-01T00:00:00Z', updated_at: '2026-04-01T00:00:00Z',
-  },
-  {
-    id: 'EMP003', auth_user_id: 'demo-003', name: '鈴木一郎', kana: 'すずき いちろう',
-    birthday: '1988-12-01', dept: '総務部', position: '課長',
-    status: 'active', paid_leave_total: 20, paid_leave_used: 5,
-    first_login: false, pw_changed_at: '2026-02-15T10:00:00Z', pw_reset_at: null,
-    created_at: '2024-04-01T00:00:00Z', updated_at: '2026-04-01T00:00:00Z',
-  },
-]
+// 従業員はゼロから始める（管理者画面で追加していく想定）
+const DEMO_EMPLOYEES: Employee[] = []
 
 const DEMO_SETTINGS: Settings = {
   id: 1, company_name: '株式会社Backlly',
@@ -48,41 +26,9 @@ const DEMO_SETTINGS: Settings = {
   created_at: '2025-01-01T00:00:00Z', updated_at: '2025-01-01T00:00:00Z',
 }
 
-// 過去数日分のダミー勤怠データを生成
+// 勤怠もゼロから（従業員ゼロなので関連データも空）
 function generateDemoAttendance(): Attendance[] {
-  const records: Attendance[] = []
-  const today = new Date()
-
-  for (let dayOffset = -7; dayOffset <= 0; dayOffset++) {
-    const d = new Date(today)
-    d.setDate(d.getDate() + dayOffset)
-    const dateStr = d.toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' })
-    const dow = new Date(dateStr + 'T00:00:00+09:00').getDay()
-    if (dow === 0 || dow === 6) continue // 土日スキップ
-
-    // EMP001 のみ過去データ
-    if (dayOffset < 0) {
-      const inTime = new Date(`${dateStr}T09:0${Math.floor(Math.random() * 5)}:00+09:00`)
-      const bsTime = new Date(`${dateStr}T12:00:00+09:00`)
-      const beTime = new Date(`${dateStr}T13:00:00+09:00`)
-      const outTime = new Date(`${dateStr}T18:${10 + Math.floor(Math.random() * 30)}:00+09:00`)
-
-      records.push({
-        id: `demo-att-emp001-${dateStr}`,
-        emp_id: 'EMP001', date: dateStr,
-        events: [
-          { type: 'in', time: inTime.toISOString(), source: 'clock' },
-          { type: 'break_start', time: bsTime.toISOString(), source: 'clock' },
-          { type: 'break_end', time: beTime.toISOString(), source: 'clock' },
-          { type: 'out', time: outTime.toISOString(), source: 'clock' },
-        ],
-        note: '', admin_note: null, admin_note_updated_at: null, admin_note_by: null,
-        modified_by: null, modified_at: null,
-        created_at: inTime.toISOString(), updated_at: outTime.toISOString(),
-      })
-    }
-  }
-  return records
+  return []
 }
 
 // インメモリDB
@@ -116,11 +62,7 @@ export function resetDemoDB(): void {
   _db = null
 }
 
-// デモ用パスワード
-export const DEMO_PASSWORDS: Record<string, string> = {
-  EMP001: 'pass',
-  EMP002: 'pass',
-  EMP003: 'pass',
-}
+// 従業員パスワードは管理者が登録した時に追加していく
+export const DEMO_PASSWORDS: Record<string, string> = {}
 
 export const DEMO_ADMIN_PASSWORD = 'admin'
