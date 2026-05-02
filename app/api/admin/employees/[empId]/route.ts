@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { verifyAdminSession } from '@/lib/auth'
 
@@ -40,7 +41,7 @@ export async function PATCH(
       return NextResponse.json({ error: '従業員が見つかりません' }, { status: 404 })
     }
 
-    // 1. パスワードリセット（単独操作）
+    // 1. パスワードリセット（単独操作）+ 直後にサインインテスト
     if (body.reset_password) {
       if (!existing.auth_user_id) {
         return NextResponse.json({ error: 'auth_user_id が紐づいていません' }, { status: 400 })
@@ -62,7 +63,27 @@ export async function PATCH(
       if (empError) {
         return NextResponse.json({ error: 'first_login 更新失敗: ' + empError.message }, { status: 500 })
       }
-      return NextResponse.json({ success: true })
+
+      // anonキーで実際にサインインしてみて、パスワードが本当に通るか検証
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      let signin_check: { ok: boolean; error?: string } = { ok: false, error: 'ENV未設定' }
+      if (url && anon) {
+        const tester = createClient(url, anon, { auth: { persistSession: false } })
+        const email = `${empId.toLowerCase()}@b-attendance.local`
+        const { error: signInError } = await tester.auth.signInWithPassword({
+          email, password: body.reset_password,
+        })
+        signin_check = signInError
+          ? { ok: false, error: signInError.message }
+          : { ok: true }
+        if (!signInError) {
+          // セッション残らないようにサインアウト
+          await tester.auth.signOut()
+        }
+      }
+
+      return NextResponse.json({ success: true, signin_check })
     }
 
     // 2. ID 変更（先に処理。以降の更新は新IDに対して行う）

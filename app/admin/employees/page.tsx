@@ -171,17 +171,29 @@ function EmployeesPageInner() {
       setResetMsg('4文字以上の新パスワードを入力してください')
       return
     }
+    const newPw = formResetPw
     const res = await fetch(`/api/admin/employees/${editingId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reset_password: formResetPw }),
+      body: JSON.stringify({ reset_password: newPw }),
     })
     const data = await res.json()
     if (!res.ok) {
       setResetMsg(data.error || 'リセット失敗')
       return
     }
-    setResetMsg(`新パスワード「${formResetPw}」を設定しました。次回ログイン時に本人がパスワード変更を求められます。`)
+    const signin = data.signin_check
+    if (signin?.ok) {
+      setResetMsg(
+        `✅ 新パスワード「${newPw}」設定完了。サインインテストも成功。\n` +
+        `本人はこのパスワードで一般ログインできます（次回ログイン時にパスワード変更を求められます）。`
+      )
+    } else {
+      setResetMsg(
+        `⚠️ パスワード更新はDB上は成功しましたが、サインインテスト失敗: ${signin?.error || '不明'}\n` +
+        `Supabase Auth側で何らかの拒否設定がかかってる可能性。`
+      )
+    }
     setFormResetPw('')
   }
 
