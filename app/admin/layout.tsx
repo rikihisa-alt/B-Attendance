@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Header from '@/components/nav/Header'
-import { IS_DEMO, apiGetSession } from '@/lib/api'
-import { useState } from 'react'
+import AdminSidebar from '@/components/nav/AdminSidebar'
+import { IS_DEMO, apiGetSession, apiGetCorrections, apiGetLeaves } from '@/lib/api'
+import { createClient } from '@/lib/supabase/client'
 
 export default function AdminLayout({
   children,
@@ -13,7 +14,8 @@ export default function AdminLayout({
 }) {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const [userName, setUserName] = useState('')
+  const [pendingCorrections, setPendingCorrections] = useState(0)
+  const [pendingLeaves, setPendingLeaves] = useState(0)
 
   useEffect(() => {
     async function checkSession() {
@@ -24,14 +26,39 @@ export default function AdminLayout({
           router.push('/login')
           return
         }
-        setUserName(data.session.name || 'Admin')
-      } else {
-        setUserName('Admin')
       }
+      // 非DEMOではmiddleware/api側で認証チェック済み
       setLoading(false)
     }
     checkSession()
   }, [router])
+
+  useEffect(() => {
+    if (loading) return
+    async function loadBadges() {
+      if (IS_DEMO) {
+        const [c, l] = await Promise.all([
+          apiGetCorrections(undefined, 'pending'),
+          apiGetLeaves(undefined, 'pending'),
+        ])
+        const cd = await c.json()
+        const ld = await l.json()
+        setPendingCorrections(cd.data?.length || 0)
+        setPendingLeaves(ld.data?.length || 0)
+      } else {
+        const supabase = createClient()
+        const { count: cc } = await supabase
+          .from('correction_requests').select('*', { count: 'exact', head: true })
+          .eq('status', 'pending')
+        const { count: lc } = await supabase
+          .from('leave_requests').select('*', { count: 'exact', head: true })
+          .eq('status', 'pending')
+        setPendingCorrections(cc || 0)
+        setPendingLeaves(lc || 0)
+      }
+    }
+    loadBadges()
+  }, [loading])
 
   if (loading) {
     return (
@@ -42,11 +69,12 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
-      <Header userName={userName} role="admin" />
-      <main className="px-7 py-[22px] pb-[60px] max-w-[1500px] mx-auto">
-        {children}
-      </main>
+    <div className="app-shell">
+      <Header userName="管理者" role="admin" />
+      <div className="app-body">
+        <AdminSidebar pendingCorrections={pendingCorrections} pendingLeaves={pendingLeaves} />
+        <main className="main">{children}</main>
+      </div>
     </div>
   )
 }
