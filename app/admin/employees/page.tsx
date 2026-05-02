@@ -101,7 +101,8 @@ function EmployeesPageInner() {
     }
     setSubmitting(true)
     if (editingId) {
-      const updates = {
+      const newIdInput = formId.trim().toUpperCase()
+      const updates: Record<string, unknown> = {
         name: formName.trim(),
         kana: formKana.trim() || null,
         birthday: formBirthday || null,
@@ -110,6 +111,17 @@ function EmployeesPageInner() {
         paid_leave_total: Number(formPaidTotal),
         paid_leave_used: Number(formPaidUsed),
         status: formStatus,
+      }
+      if (newIdInput && newIdInput !== editingId) {
+        if (!confirm(
+          `社員IDを ${editingId} → ${newIdInput} に変更します。\n` +
+          `関連する勤怠/申請データも自動で新IDに紐付け直されます。\n` +
+          `本人は次回ログインから新IDを使用してください。\n続行しますか？`
+        )) {
+          setSubmitting(false)
+          return
+        }
+        updates.new_id = newIdInput
       }
       const res = await fetch(`/api/admin/employees/${editingId}`, {
         method: 'PATCH',
@@ -301,8 +313,12 @@ function EmployeesPageInner() {
                     value={formId}
                     onChange={e => setFormId(e.target.value)}
                     placeholder="EMP003"
-                    disabled={!!editingId}
                   />
+                  {editingId && (
+                    <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                      ※ ID を変更すると勤怠/申請データも自動で新IDへ紐付け直されます。本人は次回ログインから新IDを使用。
+                    </p>
+                  )}
                 </div>
                 {!editingId && (
                   <div className="field">

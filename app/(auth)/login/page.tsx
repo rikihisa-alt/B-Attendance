@@ -64,20 +64,39 @@ export default function LoginPage() {
         router.push('/home')
       } else {
         const supabase = createClient()
-        const email = `${empId.toUpperCase()}@b-attendance.local`
+        const upperEmpId = empId.trim().toUpperCase()
+        // メールはSupabase側で小文字正規化されるが、念のため小文字で送る
+        const email = `${upperEmpId.toLowerCase()}@b-attendance.local`
         const { error } = await supabase.auth.signInWithPassword({ email, password: empPw })
         if (error) {
-          setUserError('社員IDまたはパスワードが正しくありません')
+          setUserError(
+            error.message.includes('Invalid login credentials')
+              ? '社員IDまたはパスワードが正しくありません'
+              : 'ログイン失敗: ' + error.message
+          )
           setUserLoading(false)
           return
         }
-        const { data: emp } = await supabase
+        const { data: emp, error: empError } = await supabase
           .from('employees')
           .select('first_login')
-          .eq('id', empId.toUpperCase())
-          .single()
-        if (emp?.first_login) {
-          setCurrentEmpId(empId.toUpperCase())
+          .eq('id', upperEmpId)
+          .maybeSingle()
+        if (empError) {
+          setUserError('従業員情報の取得に失敗しました: ' + empError.message)
+          setUserLoading(false)
+          return
+        }
+        if (!emp) {
+          setUserError(
+            'Authユーザーは存在しますが、employees テーブルに該当行がありません。' +
+            ' 管理者画面で従業員を作り直してください。'
+          )
+          setUserLoading(false)
+          return
+        }
+        if (emp.first_login) {
+          setCurrentEmpId(upperEmpId)
           setInitialPw(empPw)
           setShowFirstLogin(true)
           setUserLoading(false)

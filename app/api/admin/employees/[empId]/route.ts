@@ -5,6 +5,7 @@ import { verifyAdminSession } from '@/lib/auth'
 export const runtime = 'nodejs'
 
 interface UpdateBody {
+  new_id?: string
   name?: string
   kana?: string | null
   birthday?: string | null
@@ -16,6 +17,10 @@ interface UpdateBody {
   reset_password?: string
 }
 
+function authEmail(empId: string): string {
+  return `${empId.toLowerCase()}@b-attendance.local`
+}
+
 export async function PATCH(
   request: Request,
   { params }: { params: { empId: string } }
@@ -25,7 +30,7 @@ export async function PATCH(
   }
 
   try {
-    const empId = params.empId
+    let empId = params.empId.toUpperCase()
     const body = (await request.json()) as UpdateBody
     const admin = supabaseAdmin()
 
@@ -35,10 +40,13 @@ export async function PATCH(
       return NextResponse.json({ error: '従業員が見つかりません' }, { status: 404 })
     }
 
-    // パスワードリセット
+    // 1. パスワードリセット（単独操作）
     if (body.reset_password) {
       if (!existing.auth_user_id) {
         return NextResponse.json({ error: 'auth_user_id が紐づいていません' }, { status: 400 })
+      }
+      if (body.reset_password.length < 4) {
+        return NextResponse.json({ error: '新パスワードは4文字以上で入力してください' }, { status: 400 })
       }
       const { error: pwError } = await admin.auth.admin.updateUserById(existing.auth_user_id, {
         password: body.reset_password,
@@ -52,12 +60,51 @@ export async function PATCH(
           pw_reset_at: new Date().toISOString(),
         }).eq('id', empId)
       if (empError) {
-        return NextResponse.json({ error: 'first_login更新失敗: ' + empError.message }, { status: 500 })
+        return NextResponse.json({ error: 'first_login 更新失敗: ' + empError.message }, { status: 500 })
       }
       return NextResponse.json({ success: true })
     }
 
-    // 通常の編集
+    // 2. ID 変更（先に処理。以降の更新は新IDに対して行う）
+    if (body.new_id) {
+      const newId = body.new_id.trim().toUpperCase()
+      if (newId !== empId) {
+        if (!/^[A-Z0-9_-]{1,16}$/.test(newId)) {
+          return NextResponse.json({ error: '社員IDは英数字 1〜16文字で入力してください' }, { status: 400 })
+        }
+        const { data: dup } = await admin
+          .from('employees').select('id').eq('id', newId).maybeSingle()
+        if (dup) {
+          return NextResponse.json({ error: '同じ社員IDが既に存在します' }, { status: 409 })
+        }
+
+        // employees.id を新IDへ。FK の ON UPDATE CASCADE が必須（migration SQL で設定）
+        const { error: idError } = await admin
+          .from('employees').update({ id: newId }).eq('id', empId)
+        if (idError) {
+          return NextResponse.json({
+            error: 'ID 変更失敗: ' + idError.message + ' （FK の ON UPDATE CASCADE が必要）',
+          }, { status: 500 })
+        }
+
+        // Auth ユーザーのメール + app_metadata.emp_id も更新
+        if (existing.auth_user_id) {
+          const { error: emailError } = await admin.auth.admin.updateUserById(existing.auth_user_id, {
+            email: authEmail(newId),
+            app_metadata: { role: 'user', emp_id: newId },
+          })
+          if (emailError) {
+            return NextResponse.json({
+              error: 'employees の ID は更新されましたが Auth ユーザー更新に失敗: ' + emailError.message,
+            }, { status: 500 })
+          }
+        }
+
+        empId = newId
+      }
+    }
+
+    // 3. 通常編集
     const updates: Record<string, unknown> = {}
     if (body.name !== undefined) updates.name = body.name
     if (body.kana !== undefined) updates.kana = body.kana
@@ -69,14 +116,15 @@ export async function PATCH(
     if (body.paid_leave_used !== undefined) updates.paid_leave_used = body.paid_leave_used
 
     if (Object.keys(updates).length === 0) {
-      return NextResponse.json({ error: '更新項目がありません' }, { status: 400 })
+      // 通常項目に変更が無い場合（ID変更だけの場合など）も成功として返す
+      return NextResponse.json({ success: true, id: empId })
     }
 
     const { error } = await admin.from('employees').update(updates).eq('id', empId)
     if (error) {
       return NextResponse.json({ error: '更新失敗: ' + error.message }, { status: 500 })
     }
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, id: empId })
   } catch (e) {
     return NextResponse.json({ error: '処理エラー: ' + String(e) }, { status: 500 })
   }
@@ -91,15 +139,14 @@ export async function DELETE(
   }
 
   try {
-    const empId = params.empId
+    const empId = params.empId.toUpperCase()
     const admin = supabaseAdmin()
     const { data: existing } = await admin
       .from('employees').select('auth_user_id').eq('id', empId).maybeSingle()
     if (!existing) {
       return NextResponse.json({ error: '従業員が見つかりません' }, { status: 404 })
     }
-    // employees の物理削除は ON DELETE で attendance も一緒に消えるリスクがあるので
-    // status='inactive' に切り替えるソフト削除を採用。Auth ユーザーだけ無効化したい場合は管理者が個別対応。
+    // ソフト削除（status='inactive'）。Auth ユーザーは残すのでログイン履歴も保持
     const { error } = await admin
       .from('employees').update({ status: 'inactive' }).eq('id', empId)
     if (error) {
