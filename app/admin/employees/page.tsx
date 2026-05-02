@@ -51,7 +51,7 @@ function EmployeesPageInner() {
 
   const openCreateModal = () => {
     setEditingId(null)
-    setFormId(generateNextEmpId(employees))
+    setFormId('')
     setFormPw(generateInitialPassword())
     setFormName('')
     setFormKana('')
@@ -312,7 +312,7 @@ function EmployeesPageInner() {
                     type="text"
                     value={formId}
                     onChange={e => setFormId(e.target.value)}
-                    placeholder="EMP003"
+                    placeholder="社員ID（例: 任意の英数字）"
                   />
                   {editingId && (
                     <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
@@ -477,16 +477,6 @@ function EmployeesPageInner() {
       )}
     </section>
   )
-}
-
-function generateNextEmpId(emps: Employee[]): string {
-  const maxNum = emps.reduce((max, e) => {
-    const m = e.id.match(/^EMP(\d+)$/)
-    if (!m) return max
-    const n = parseInt(m[1], 10)
-    return n > max ? n : max
-  }, 0)
-  return `EMP${String(maxNum + 1).padStart(3, '0')}`
 }
 
 function generateInitialPassword(): string {
