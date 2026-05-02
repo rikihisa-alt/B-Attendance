@@ -11,6 +11,7 @@ export interface Settings {
   monthly_overtime_limit: number
   yearly_overtime_limit: number
   monthly_overtime_warning: number
+  admin_id: string
   admin_password_hash: string
   admin_password_changed_at: string | null
   created_at: string

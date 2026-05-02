@@ -21,6 +21,7 @@ const DEMO_SETTINGS: Settings = {
   standard_work_hours: 8, standard_work_days: 20,
   work_start_time: '09:00', work_end_time: '18:00',
   monthly_overtime_limit: 45, yearly_overtime_limit: 360, monthly_overtime_warning: 36,
+  admin_id: 'admin',
   admin_password_hash: '$2a$10$dummyhashnotreal', // demoではplain比較
   admin_password_changed_at: null,
   created_at: '2025-01-01T00:00:00Z', updated_at: '2025-01-01T00:00:00Z',

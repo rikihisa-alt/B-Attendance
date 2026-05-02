@@ -96,7 +96,7 @@ export default function LoginPage() {
     setAdminError('')
     setAdminLoading(true)
     try {
-      const res = await apiLoginAdmin(adminPw)
+      const res = await apiLoginAdmin(adminPw, adminId.trim())
       const data = await res.json()
       if (!res.ok) {
         setAdminError(data.error || '認証に失敗しました')

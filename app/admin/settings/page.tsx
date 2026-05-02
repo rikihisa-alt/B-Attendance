@@ -19,6 +19,7 @@ export default function AdminSettingsPage() {
   const [monthWarn, setMonthWarn] = useState(36)
   const [saving, setSaving] = useState(false)
 
+  const [adminIdInput, setAdminIdInput] = useState('')
   const [currentPw, setCurrentPw] = useState('')
   const [newPw1, setNewPw1] = useState('')
   const [newPw2, setNewPw2] = useState('')
@@ -53,6 +54,7 @@ export default function AdminSettingsPage() {
       setMonthLimit(s.monthly_overtime_limit)
       setYearLimit(s.yearly_overtime_limit)
       setMonthWarn(s.monthly_overtime_warning)
+      setAdminIdInput(s.admin_id || '')
     }
     setLoading(false)
   }, [])
@@ -70,6 +72,7 @@ export default function AdminSettingsPage() {
       monthly_overtime_limit: Number(monthLimit),
       yearly_overtime_limit: Number(yearLimit),
       monthly_overtime_warning: Number(monthWarn),
+      admin_id: adminIdInput.trim(),
     }
     if (IS_DEMO) {
       await apiUpdateSettings(updates)
@@ -255,11 +258,22 @@ export default function AdminSettingsPage() {
       <div className="card">
         <div className="card-header">
           <div className="card-title-block">
-            <span className="card-title">管理者パスワード変更</span>
-            <span className="card-title-en">CHANGE ADMIN PASSWORD</span>
+            <span className="card-title">管理者ログイン情報</span>
+            <span className="card-title-en">ADMIN CREDENTIALS</span>
           </div>
         </div>
         <div className="card-body">
+          <div className="field">
+            <label>
+              <span className="lbl-ja">管理者ID</span>
+              <span className="lbl-en">ADMIN ID</span>
+            </label>
+            <input type="text" value={adminIdInput} onChange={e => setAdminIdInput(e.target.value)} placeholder="例 admin" />
+          </div>
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, marginBottom: 12 }}>
+            ※ 管理者IDは「設定を保存」ボタンで反映されます。パスワードの変更は下のフォームで行ってください。
+          </p>
+
           {pwError && <div className="error-msg">{pwError}</div>}
           <div className="row">
             <div className="field">

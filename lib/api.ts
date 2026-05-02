@@ -21,9 +21,9 @@ export async function apiLoginUser(empId: string, password: string) {
   return fetch('/api/auth/login-user', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ empId, password }) })
 }
 
-export async function apiLoginAdmin(password: string) {
-  if (IS_DEMO) return demoCall('login-admin', { password })
-  return fetch('/api/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) })
+export async function apiLoginAdmin(password: string, id?: string) {
+  if (IS_DEMO) return demoCall('login-admin', { password, id })
+  return fetch('/api/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password, id }) })
 }
 
 export async function apiLogout() {

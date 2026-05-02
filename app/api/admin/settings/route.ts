@@ -14,6 +14,7 @@ interface UpdateBody {
   monthly_overtime_limit?: number
   yearly_overtime_limit?: number
   monthly_overtime_warning?: number
+  admin_id?: string
   current_password?: string
   new_password?: string
 }
@@ -70,6 +71,7 @@ export async function PATCH(request: Request) {
     if (body.monthly_overtime_limit !== undefined) updates.monthly_overtime_limit = body.monthly_overtime_limit
     if (body.yearly_overtime_limit !== undefined) updates.yearly_overtime_limit = body.yearly_overtime_limit
     if (body.monthly_overtime_warning !== undefined) updates.monthly_overtime_warning = body.monthly_overtime_warning
+    if (body.admin_id !== undefined) updates.admin_id = body.admin_id
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: '更新項目がありません' }, { status: 400 })
