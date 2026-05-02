@@ -201,7 +201,7 @@ export default function LoginPage() {
                       type="text"
                       value={empId}
                       onChange={e => setEmpId(e.target.value)}
-                      placeholder="例 EMP001"
+                      placeholder="IDを入力"
                       autoComplete="off"
                       required
                     />
@@ -236,7 +236,7 @@ export default function LoginPage() {
                       type="text"
                       value={adminId}
                       onChange={e => setAdminId(e.target.value)}
-                      placeholder="例 ADMIN"
+                      placeholder="IDを入力"
                       autoComplete="off"
                     />
                   </div>
