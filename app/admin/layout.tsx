@@ -4,8 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Header from '@/components/nav/Header'
 import AdminSidebar from '@/components/nav/AdminSidebar'
-import { IS_DEMO, apiGetSession, apiGetCorrections, apiGetLeaves } from '@/lib/api'
-import { createClient } from '@/lib/supabase/client'
+import { IS_DEMO, apiGetSession, apiGetCorrections, apiGetLeaves, adminSelect } from '@/lib/api'
 
 export default function AdminLayout({
   children,
@@ -46,15 +45,12 @@ export default function AdminLayout({
         setPendingCorrections(cd.data?.length || 0)
         setPendingLeaves(ld.data?.length || 0)
       } else {
-        const supabase = createClient()
-        const { count: cc } = await supabase
-          .from('correction_requests').select('*', { count: 'exact', head: true })
-          .eq('status', 'pending')
-        const { count: lc } = await supabase
-          .from('leave_requests').select('*', { count: 'exact', head: true })
-          .eq('status', 'pending')
-        setPendingCorrections(cc || 0)
-        setPendingLeaves(lc || 0)
+        const [c, l] = await Promise.all([
+          adminSelect({ table: 'correction_requests', filters: { status: 'pending' }, count_only: true }),
+          adminSelect({ table: 'leave_requests', filters: { status: 'pending' }, count_only: true }),
+        ])
+        setPendingCorrections(c.count || 0)
+        setPendingLeaves(l.count || 0)
       }
     }
     loadBadges()

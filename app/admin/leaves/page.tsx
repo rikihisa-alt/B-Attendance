@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { IS_DEMO, apiGetLeaves, apiApproveLeave, apiRejectLeave } from '@/lib/api'
-import { createClient } from '@/lib/supabase/client'
+import { IS_DEMO, apiGetLeaves, apiApproveLeave, apiRejectLeave, adminSelect, adminApproveLeave, adminRejectLeave } from '@/lib/api'
 import type { LeaveRequest, LeaveType, LeaveRequestStatus } from '@/types/db'
 
 const LEAVE_TYPE_LABEL: Record<LeaveType, string> = {
@@ -50,11 +49,12 @@ export default function AdminLeavesPage() {
       const data = await res.json()
       setLeaves((data.data || []) as LeaveRequest[])
     } else {
-      const supabase = createClient()
-      let query = supabase.from('leave_requests').select('*').order('submitted_at', { ascending: false })
-      if (statusFilter !== 'all') query = query.eq('status', statusFilter)
-      const { data } = await query
-      setLeaves((data || []) as LeaveRequest[])
+      const { data } = await adminSelect<LeaveRequest[]>({
+        table: 'leave_requests',
+        filters: statusFilter === 'all' ? undefined : { status: statusFilter },
+        order: { column: 'submitted_at', ascending: false },
+      })
+      setLeaves(data || [])
     }
     setLoading(false)
   }, [statusFilter])
@@ -73,23 +73,12 @@ export default function AdminLeavesPage() {
         return
       }
     } else {
-      const supabase = createClient()
-      await supabase.from('leave_requests').update({
-        status: 'approved',
-        reviewed_at: new Date().toISOString(),
-        reviewed_by: 'admin',
-      }).eq('id', l.id)
-
-      // 有給の場合は paid_leave_used を更新（承認済み合算で算出するなら不要、ここでは即時加算）
-      if (l.type.startsWith('paid')) {
-        const { data: emp } = await supabase
-          .from('employees').select('paid_leave_used').eq('id', l.emp_id).single()
-        if (emp) {
-          await supabase
-            .from('employees')
-            .update({ paid_leave_used: (emp.paid_leave_used || 0) + leaveDays(l) })
-            .eq('id', l.emp_id)
-        }
+      const res = await adminApproveLeave(l.id)
+      if (!res.ok) {
+        const data = await res.json()
+        showToast(data.error || '承認失敗', 'error')
+        setSubmitting(false)
+        return
       }
     }
     showToast('休暇申請を承認しました', 'success')
@@ -110,13 +99,13 @@ export default function AdminLeavesPage() {
         return
       }
     } else {
-      const supabase = createClient()
-      await supabase.from('leave_requests').update({
-        status: 'rejected',
-        reviewed_at: new Date().toISOString(),
-        reviewed_by: 'admin',
-        reject_reason: rejectReason.trim(),
-      }).eq('id', rejectingId)
+      const res = await adminRejectLeave(rejectingId, rejectReason.trim())
+      if (!res.ok) {
+        const data = await res.json()
+        showToast(data.error || '却下失敗', 'error')
+        setSubmitting(false)
+        return
+      }
     }
     showToast('休暇申請を却下しました', 'info')
     setRejectingId(null)

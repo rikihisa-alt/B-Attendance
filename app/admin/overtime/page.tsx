@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { IS_DEMO, apiGetEmployees, apiGetAttendance, apiGetSettings } from '@/lib/api'
-import { createClient } from '@/lib/supabase/client'
+import { IS_DEMO, apiGetEmployees, apiGetAttendance, apiGetSettings, adminSelect } from '@/lib/api'
 import { calcDay } from '@/lib/attendance'
 import { formatMinutes } from '@/lib/format'
 import type { Employee, Attendance, AttendanceEvent, Settings } from '@/types/db'
@@ -64,21 +63,27 @@ export default function AdminOvertimePage() {
       )
       allRecords = recsPer.flat()
     } else {
-      const supabase = createClient()
       const [empRes, sRes] = await Promise.all([
-        supabase.from('employees').select('*').eq('status', 'active').order('id'),
-        supabase.from('settings').select('*').eq('id', 1).single(),
+        adminSelect<Employee[]>({
+          table: 'employees', filters: { status: 'active' },
+          order: { column: 'id' },
+        }),
+        adminSelect<Settings>({
+          table: 'settings', filters: { id: 1 }, single: true,
+        }),
       ])
-      emps = (empRes.data || []) as Employee[]
-      s = sRes.data as Settings | null
+      emps = empRes.data || []
+      s = sRes.data
 
       const empIds = emps.map(e => e.id)
       if (empIds.length > 0) {
-        const { data } = await supabase
-          .from('attendance').select('*')
-          .in('emp_id', empIds)
-          .gte('date', startDate).lte('date', endDate)
-        allRecords = (data || []) as Attendance[]
+        const { data } = await adminSelect<Attendance[]>({
+          table: 'attendance',
+          in_filters: { emp_id: empIds },
+          gte: { column: 'date', value: startDate },
+          lte: { column: 'date', value: endDate },
+        })
+        allRecords = data || []
       }
     }
     setSettings(s)

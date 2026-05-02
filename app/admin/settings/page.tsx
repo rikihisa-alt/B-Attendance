@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { IS_DEMO, apiGetSettings, apiUpdateSettings } from '@/lib/api'
-import { createClient } from '@/lib/supabase/client'
+import { IS_DEMO, apiGetSettings, apiUpdateSettings, adminSelect } from '@/lib/api'
 import type { Settings } from '@/types/db'
 
 export default function AdminSettingsPage() {
@@ -40,9 +39,10 @@ export default function AdminSettingsPage() {
       const data = await res.json()
       s = data.data as Settings | null
     } else {
-      const supabase = createClient()
-      const { data } = await supabase.from('settings').select('*').eq('id', 1).single()
-      s = data as Settings | null
+      const { data } = await adminSelect<Settings>({
+        table: 'settings', filters: { id: 1 }, single: true,
+      })
+      s = data
     }
     if (s) {
       setSettings(s)

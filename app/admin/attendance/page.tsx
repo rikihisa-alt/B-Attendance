@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { IS_DEMO, apiGetEmployees, apiGetAttendance, apiUpdateAttendance } from '@/lib/api'
-import { createClient } from '@/lib/supabase/client'
+import { IS_DEMO, apiGetEmployees, apiGetAttendance, apiUpdateAttendance, adminSelect, adminUpdateAdminNote } from '@/lib/api'
 import { calcDay, sortedEvents } from '@/lib/attendance'
 import { fmtTimeShort, formatMinutes, dowJa } from '@/lib/format'
 import type { Employee, Attendance, AttendanceEvent, AttendanceEventType } from '@/types/db'
@@ -50,9 +49,12 @@ function AttendancePageInner() {
       setEmployees(list)
       if (!selectedEmp && list.length > 0) setSelectedEmp(list[0].id)
     } else {
-      const supabase = createClient()
-      const { data } = await supabase.from('employees').select('*').eq('status', 'active').order('id')
-      const list = (data || []) as Employee[]
+      const { data } = await adminSelect<Employee[]>({
+        table: 'employees',
+        filters: { status: 'active' },
+        order: { column: 'id' },
+      })
+      const list = data || []
       setEmployees(list)
       if (!selectedEmp && list.length > 0) setSelectedEmp(list[0].id)
     }
@@ -78,12 +80,13 @@ function AttendancePageInner() {
       const data = await res.json()
       ;(data.data || []).forEach((r: Attendance) => { recordMap[r.date] = r })
     } else {
-      const supabase = createClient()
-      const { data } = await supabase
-        .from('attendance').select('*')
-        .eq('emp_id', selectedEmp)
-        .gte('date', startDate).lte('date', endDate)
-      ;(data || []).forEach(r => { recordMap[(r as Attendance).date] = r as Attendance })
+      const { data } = await adminSelect<Attendance[]>({
+        table: 'attendance',
+        filters: { emp_id: selectedEmp },
+        gte: { column: 'date', value: startDate },
+        lte: { column: 'date', value: endDate },
+      })
+      ;(data || []).forEach(r => { recordMap[r.date] = r })
     }
 
     const list: Row[] = []
@@ -117,11 +120,6 @@ function AttendancePageInner() {
   const saveAdminNote = async () => {
     if (!detail) return
     setSavingNote(true)
-    const updates = {
-      admin_note: adminNote,
-      admin_note_updated_at: new Date().toISOString(),
-      admin_note_by: 'admin',
-    }
     if (IS_DEMO) {
       await apiUpdateAttendance({
         empId: selectedEmp,
@@ -129,24 +127,17 @@ function AttendancePageInner() {
         adminNote,
       })
     } else {
-      const supabase = createClient()
-      if (detail.rec) {
-        await supabase.from('attendance').update(updates)
-          .eq('emp_id', selectedEmp).eq('date', detail.date)
-      } else {
-        await supabase.from('attendance').insert({
-          emp_id: selectedEmp,
-          date: detail.date,
-          events: [],
-          note: '',
-          ...updates,
-        })
+      const res = await adminUpdateAdminNote(selectedEmp, detail.date, adminNote)
+      if (!res.ok) {
+        const data = await res.json()
+        showToast(data.error || '保存失敗', 'error')
+        setSavingNote(false)
+        return
       }
     }
     showToast('管理者メモを保存しました', 'success')
     setSavingNote(false)
     await loadMonth()
-    // 詳細表示を最新化
     const updatedRec = rows.find(r => r.date === detail.date)?.rec || null
     setDetail({ ...detail, rec: updatedRec })
   }

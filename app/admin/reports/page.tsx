@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { IS_DEMO, apiGetEmployees, apiGetAttendance, apiGetSettings } from '@/lib/api'
-import { createClient } from '@/lib/supabase/client'
+import { IS_DEMO, apiGetEmployees, apiGetAttendance, apiGetSettings, adminSelect } from '@/lib/api'
 import { calcDay, sortedEvents } from '@/lib/attendance'
 import { fmtTimeShort, formatMinutes, dowJa } from '@/lib/format'
 import type { Employee, Attendance, AttendanceEvent, Settings } from '@/types/db'
@@ -60,11 +59,12 @@ export default function AdminReportsPage() {
       const sData = await sRes.json()
       setSettings(sData.data as Settings | null)
     } else {
-      const supabase = createClient()
-      const { data: empData } = await supabase.from('employees').select('*').order('id')
-      setEmployees((empData || []) as Employee[])
-      const { data: sData } = await supabase.from('settings').select('*').eq('id', 1).single()
-      setSettings(sData as Settings | null)
+      const [empRes, sRes] = await Promise.all([
+        adminSelect<Employee[]>({ table: 'employees', order: { column: 'id' } }),
+        adminSelect<Settings>({ table: 'settings', filters: { id: 1 }, single: true }),
+      ])
+      setEmployees(empRes.data || [])
+      setSettings(sRes.data)
     }
   }, [])
 
@@ -90,14 +90,14 @@ export default function AdminReportsPage() {
       )
       recsPer.forEach(({ id, recs }) => { result[id] = recs })
     } else if (empIds.length > 0) {
-      const supabase = createClient()
-      const { data } = await supabase
-        .from('attendance').select('*')
-        .in('emp_id', empIds)
-        .gte('date', startDate).lte('date', endDate)
-        .order('date')
-      ;(data || []).forEach(r => {
-        const rec = r as Attendance
+      const { data } = await adminSelect<Attendance[]>({
+        table: 'attendance',
+        in_filters: { emp_id: empIds },
+        gte: { column: 'date', value: startDate },
+        lte: { column: 'date', value: endDate },
+        order: { column: 'date' },
+      })
+      ;(data || []).forEach(rec => {
         if (!result[rec.emp_id]) result[rec.emp_id] = []
         result[rec.emp_id].push(rec)
       })

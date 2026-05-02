@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { IS_DEMO, apiGetEmployees, apiGetAttendance, apiGetCorrections, apiGetLeaves, apiGetSettings } from '@/lib/api'
-import { createClient } from '@/lib/supabase/client'
+import { IS_DEMO, apiGetEmployees, apiGetAttendance, apiGetCorrections, apiGetLeaves, apiGetSettings, adminSelect } from '@/lib/api'
 import { calcDay } from '@/lib/attendance'
 import { dowJa, fmtTimeShort } from '@/lib/format'
 import type { Employee, Attendance, AttendanceEvent, Settings } from '@/types/db'
@@ -103,26 +102,26 @@ export default function AdminDashboardPage() {
       )
       allRecords = recsPer.flat()
     } else {
-      const supabase = createClient()
       const [empRes, sRes, ccRes, lcRes] = await Promise.all([
-        supabase.from('employees').select('*').eq('status', 'active'),
-        supabase.from('settings').select('*').eq('id', 1).single(),
-        supabase.from('correction_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-        supabase.from('leave_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+        adminSelect<Employee[]>({ table: 'employees', filters: { status: 'active' } }),
+        adminSelect<Settings>({ table: 'settings', filters: { id: 1 }, single: true }),
+        adminSelect({ table: 'correction_requests', filters: { status: 'pending' }, count_only: true }),
+        adminSelect({ table: 'leave_requests', filters: { status: 'pending' }, count_only: true }),
       ])
-      emps = (empRes.data || []) as Employee[]
-      stngs = sRes.data as Settings | null
+      emps = empRes.data || []
+      stngs = sRes.data
       pendingC = ccRes.count || 0
       pendingL = lcRes.count || 0
 
-      // 単一クエリで全 active 従業員 × 期間の勤怠をまとめて取る
       const empIds = emps.filter(e => e.status === 'active').map(e => e.id)
       if (empIds.length > 0) {
-        const { data: recs } = await supabase
-          .from('attendance').select('*')
-          .in('emp_id', empIds)
-          .gte('date', wideStart).lte('date', wideEnd)
-        allRecords = (recs || []) as Attendance[]
+        const { data: recs } = await adminSelect<Attendance[]>({
+          table: 'attendance',
+          in_filters: { emp_id: empIds },
+          gte: { column: 'date', value: wideStart },
+          lte: { column: 'date', value: wideEnd },
+        })
+        allRecords = recs || []
       }
     }
 

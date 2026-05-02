@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { IS_DEMO, apiGetCorrections, apiApproveCorrection, apiRejectCorrection } from '@/lib/api'
-import { createClient } from '@/lib/supabase/client'
+import { IS_DEMO, apiGetCorrections, apiApproveCorrection, apiRejectCorrection, adminSelect, adminApproveCorrection, adminRejectCorrection } from '@/lib/api'
 import { fmtTimeShort } from '@/lib/format'
 import type { CorrectionRequest, AttendanceEvent, AttendanceEventType, CorrectionRequestStatus } from '@/types/db'
 
@@ -44,11 +43,12 @@ export default function AdminCorrectionsPage() {
       const data = await res.json()
       setRequests((data.data || []) as CorrectionRequest[])
     } else {
-      const supabase = createClient()
-      let query = supabase.from('correction_requests').select('*').order('submitted_at', { ascending: false })
-      if (statusFilter !== 'all') query = query.eq('status', statusFilter)
-      const { data } = await query
-      setRequests((data || []) as CorrectionRequest[])
+      const { data } = await adminSelect<CorrectionRequest[]>({
+        table: 'correction_requests',
+        filters: statusFilter === 'all' ? undefined : { status: statusFilter },
+        order: { column: 'submitted_at', ascending: false },
+      })
+      setRequests(data || [])
     }
     setLoading(false)
   }, [statusFilter])
@@ -67,33 +67,13 @@ export default function AdminCorrectionsPage() {
         return
       }
     } else {
-      const supabase = createClient()
-      // 承認時: attendance テーブルの events を上書き、 modified_by/at を記録
-      const { data: existing } = await supabase
-        .from('attendance').select('*')
-        .eq('emp_id', req.emp_id).eq('date', req.date).maybeSingle()
-      const events = req.requested_events
-      if (existing) {
-        await supabase.from('attendance').update({
-          events,
-          modified_by: 'admin',
-          modified_at: new Date().toISOString(),
-        }).eq('emp_id', req.emp_id).eq('date', req.date)
-      } else {
-        await supabase.from('attendance').insert({
-          emp_id: req.emp_id,
-          date: req.date,
-          events,
-          note: '',
-          modified_by: 'admin',
-          modified_at: new Date().toISOString(),
-        })
+      const res = await adminApproveCorrection(req.id)
+      if (!res.ok) {
+        const data = await res.json()
+        showToast(data.error || '承認失敗', 'error')
+        setSubmitting(false)
+        return
       }
-      await supabase.from('correction_requests').update({
-        status: 'approved',
-        reviewed_at: new Date().toISOString(),
-        reviewed_by: 'admin',
-      }).eq('id', req.id)
     }
     showToast('修正を承認しました', 'success')
     await load()
@@ -118,13 +98,13 @@ export default function AdminCorrectionsPage() {
         return
       }
     } else {
-      const supabase = createClient()
-      await supabase.from('correction_requests').update({
-        status: 'rejected',
-        reviewed_at: new Date().toISOString(),
-        reviewed_by: 'admin',
-        reject_reason: rejectReason.trim(),
-      }).eq('id', rejectingId)
+      const res = await adminRejectCorrection(rejectingId, rejectReason.trim())
+      if (!res.ok) {
+        const data = await res.json()
+        showToast(data.error || '却下失敗', 'error')
+        setSubmitting(false)
+        return
+      }
     }
     showToast('修正を却下しました', 'info')
     setRejectingId(null)

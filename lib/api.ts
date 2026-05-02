@@ -154,3 +154,71 @@ export async function apiUpdateAttendance(params: any) {
 }
 
 export { IS_DEMO }
+
+// =============================================================
+// 管理者用: service_role 経由で RLS をバイパスするサーバーサイドAPIラッパー
+// =============================================================
+
+interface AdminSelectParams {
+  table: string
+  columns?: string
+  filters?: Record<string, string | number | boolean | null>
+  in_filters?: Record<string, (string | number)[]>
+  gte?: { column: string; value: string | number }
+  lte?: { column: string; value: string | number }
+  order?: { column: string; ascending?: boolean }
+  limit?: number
+  single?: boolean
+  count_only?: boolean
+}
+
+export async function adminSelect<T = unknown>(params: AdminSelectParams): Promise<{ data: T | null; count?: number; error?: string }> {
+  const res = await fetch('/api/admin/select', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  })
+  const json = await res.json()
+  if (!res.ok) return { data: null, error: json.error || 'API エラー' }
+  return { data: json.data, count: json.count }
+}
+
+export async function adminApproveCorrection(id: string) {
+  return fetch(`/api/admin/corrections/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'approve' }),
+  })
+}
+
+export async function adminRejectCorrection(id: string, reason: string) {
+  return fetch(`/api/admin/corrections/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'reject', reject_reason: reason }),
+  })
+}
+
+export async function adminApproveLeave(id: string) {
+  return fetch(`/api/admin/leaves/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'approve' }),
+  })
+}
+
+export async function adminRejectLeave(id: string, reason: string) {
+  return fetch(`/api/admin/leaves/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'reject', reject_reason: reason }),
+  })
+}
+
+export async function adminUpdateAdminNote(empId: string, date: string, adminNote: string) {
+  return fetch('/api/admin/attendance/admin-note', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ emp_id: empId, date, admin_note: adminNote }),
+  })
+}

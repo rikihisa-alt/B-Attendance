@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { IS_DEMO } from '@/lib/api'
-import { createClient } from '@/lib/supabase/client'
+import { IS_DEMO, adminSelect } from '@/lib/api'
 import type { AuditLog } from '@/types/db'
 
 const ACTION_LABEL: Record<string, string> = {
@@ -23,14 +22,18 @@ export default function AdminAuditPage() {
     if (IS_DEMO) {
       setLogs([])
     } else {
-      const supabase = createClient()
-      let query = supabase.from('audit_log').select('*').order('created_at', { ascending: false }).limit(500)
-      if (filterFrom) query = query.gte('created_at', `${filterFrom}T00:00:00+09:00`)
-      if (filterTo) query = query.lte('created_at', `${filterTo}T23:59:59+09:00`)
-      if (filterAction) query = query.eq('action', filterAction)
-      if (filterTarget) query = query.eq('target_type', filterTarget)
-      const { data } = await query
-      setLogs((data || []) as AuditLog[])
+      const filters: Record<string, string> = {}
+      if (filterAction) filters.action = filterAction
+      if (filterTarget) filters.target_type = filterTarget
+      const { data } = await adminSelect<AuditLog[]>({
+        table: 'audit_log',
+        filters,
+        gte: filterFrom ? { column: 'created_at', value: `${filterFrom}T00:00:00+09:00` } : undefined,
+        lte: filterTo ? { column: 'created_at', value: `${filterTo}T23:59:59+09:00` } : undefined,
+        order: { column: 'created_at', ascending: false },
+        limit: 500,
+      })
+      setLogs(data || [])
     }
     setLoading(false)
   }, [filterFrom, filterTo, filterAction, filterTarget])

@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { IS_DEMO, apiGetEmployees, apiCreateEmployee, apiUpdateEmployee, apiResetPassword } from '@/lib/api'
-import { createClient } from '@/lib/supabase/client'
+import { IS_DEMO, apiGetEmployees, apiCreateEmployee, apiUpdateEmployee, apiResetPassword, adminSelect } from '@/lib/api'
 import type { Employee } from '@/types/db'
 
 function EmployeesPageInner() {
@@ -45,9 +44,11 @@ function EmployeesPageInner() {
       const data = await res.json()
       setEmployees((data.data || []) as Employee[])
     } else {
-      const supabase = createClient()
-      const { data } = await supabase.from('employees').select('*').order('id')
-      setEmployees((data || []) as Employee[])
+      const { data } = await adminSelect<Employee[]>({
+        table: 'employees',
+        order: { column: 'id' },
+      })
+      setEmployees(data || [])
     }
     setLoading(false)
   }, [])
