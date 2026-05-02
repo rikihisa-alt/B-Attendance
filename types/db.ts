@@ -44,6 +44,7 @@ export interface AttendanceEvent {
   source: AttendanceEventSource
   cancelled?: boolean
   cancelledAt?: string
+  note?: string
 }
 
 export interface Attendance {
