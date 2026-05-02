@@ -10,13 +10,6 @@ interface PatchBody {
   reject_reason?: string
 }
 
-function leaveDays(l: LeaveRequest): number {
-  if (l.type === 'paid_am' || l.type === 'paid_pm') return 0.5
-  const from = new Date(l.from_date)
-  const to = new Date(l.to_date)
-  return Math.floor((to.getTime() - from.getTime()) / 86400000) + 1
-}
-
 export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
@@ -40,24 +33,16 @@ export async function PATCH(
     }
 
     if (body.action === 'approve') {
-      const now = new Date().toISOString()
+      // employees.paid_leave_used は移行時の基準値で、承認のたびに増やさない。
+      // 残日数の計算は employees.paid_leave_used + 承認済 paid_* の合計 を引いて算出する
+      // （v_paid_leave_summary ビューと同じ計算式）。
       const { error: upErr } = await admin.from('leave_requests').update({
         status: 'approved',
-        reviewed_at: now,
+        reviewed_at: new Date().toISOString(),
         reviewed_by: 'admin',
       }).eq('id', id)
       if (upErr) {
         return NextResponse.json({ error: '承認失敗: ' + upErr.message }, { status: 500 })
-      }
-      // 有給の場合は paid_leave_used を加算
-      if (l.type.startsWith('paid')) {
-        const { data: emp } = await admin
-          .from('employees').select('paid_leave_used').eq('id', l.emp_id).maybeSingle()
-        if (emp) {
-          await admin.from('employees').update({
-            paid_leave_used: (emp.paid_leave_used || 0) + leaveDays(l),
-          }).eq('id', l.emp_id)
-        }
       }
       return NextResponse.json({ success: true })
     }

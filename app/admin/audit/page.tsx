@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { IS_DEMO, adminSelect } from '@/lib/api'
+import { adminSelect } from '@/lib/api'
 import type { AuditLog } from '@/types/db'
 
 const ACTION_LABEL: Record<string, string> = {
@@ -19,22 +19,18 @@ export default function AdminAuditPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    if (IS_DEMO) {
-      setLogs([])
-    } else {
-      const filters: Record<string, string> = {}
-      if (filterAction) filters.action = filterAction
-      if (filterTarget) filters.target_type = filterTarget
-      const { data } = await adminSelect<AuditLog[]>({
-        table: 'audit_log',
-        filters,
-        gte: filterFrom ? { column: 'created_at', value: `${filterFrom}T00:00:00+09:00` } : undefined,
-        lte: filterTo ? { column: 'created_at', value: `${filterTo}T23:59:59+09:00` } : undefined,
-        order: { column: 'created_at', ascending: false },
-        limit: 500,
-      })
-      setLogs(data || [])
-    }
+    const filters: Record<string, string> = {}
+    if (filterAction) filters.action = filterAction
+    if (filterTarget) filters.target_type = filterTarget
+    const { data } = await adminSelect<AuditLog[]>({
+      table: 'audit_log',
+      filters,
+      gte: filterFrom ? { column: 'created_at', value: `${filterFrom}T00:00:00+09:00` } : undefined,
+      lte: filterTo ? { column: 'created_at', value: `${filterTo}T23:59:59+09:00` } : undefined,
+      order: { column: 'created_at', ascending: false },
+      limit: 500,
+    })
+    setLogs(data || [])
     setLoading(false)
   }, [filterFrom, filterTo, filterAction, filterTarget])
 

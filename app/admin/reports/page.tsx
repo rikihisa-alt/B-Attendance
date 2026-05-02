@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { IS_DEMO, apiGetEmployees, apiGetAttendance, apiGetSettings, adminSelect } from '@/lib/api'
+import { adminSelect } from '@/lib/api'
 import { calcDay, sortedEvents } from '@/lib/attendance'
 import { fmtTimeShort, formatMinutes, dowJa } from '@/lib/format'
 import type { Employee, Attendance, AttendanceEvent, Settings } from '@/types/db'
@@ -51,21 +51,12 @@ export default function AdminReportsPage() {
   }
 
   const load = useCallback(async () => {
-    if (IS_DEMO) {
-      const empRes = await apiGetEmployees()
-      const empJson = await empRes.json()
-      setEmployees((empJson.data || []) as Employee[])
-      const sRes = await apiGetSettings()
-      const sData = await sRes.json()
-      setSettings(sData.data as Settings | null)
-    } else {
-      const [empRes, sRes] = await Promise.all([
-        adminSelect<Employee[]>({ table: 'employees', order: { column: 'id' } }),
-        adminSelect<Settings>({ table: 'settings', filters: { id: 1 }, single: true }),
-      ])
-      setEmployees(empRes.data || [])
-      setSettings(sRes.data)
-    }
+    const [empRes, sRes] = await Promise.all([
+      adminSelect<Employee[]>({ table: 'employees', order: { column: 'id' } }),
+      adminSelect<Settings>({ table: 'settings', filters: { id: 1 }, single: true }),
+    ])
+    setEmployees(empRes.data || [])
+    setSettings(sRes.data)
   }, [])
 
   useEffect(() => { load() }, [load])
@@ -78,30 +69,19 @@ export default function AdminReportsPage() {
 
     const result: Record<string, Attendance[]> = {}
     for (const id of empIds) result[id] = []
+    if (empIds.length === 0) return result
 
-    if (IS_DEMO) {
-      // 並列で取得
-      const recsPer = await Promise.all(
-        empIds.map(id =>
-          apiGetAttendance(id, startDate, endDate)
-            .then(r => r.json())
-            .then(d => ({ id, recs: (d.data || []) as Attendance[] }))
-        )
-      )
-      recsPer.forEach(({ id, recs }) => { result[id] = recs })
-    } else if (empIds.length > 0) {
-      const { data } = await adminSelect<Attendance[]>({
-        table: 'attendance',
-        in_filters: { emp_id: empIds },
-        gte: { column: 'date', value: startDate },
-        lte: { column: 'date', value: endDate },
-        order: { column: 'date' },
-      })
-      ;(data || []).forEach(rec => {
-        if (!result[rec.emp_id]) result[rec.emp_id] = []
-        result[rec.emp_id].push(rec)
-      })
-    }
+    const { data } = await adminSelect<Attendance[]>({
+      table: 'attendance',
+      in_filters: { emp_id: empIds },
+      gte: { column: 'date', value: startDate },
+      lte: { column: 'date', value: endDate },
+      order: { column: 'date' },
+    })
+    ;(data || []).forEach(rec => {
+      if (!result[rec.emp_id]) result[rec.emp_id] = []
+      result[rec.emp_id].push(rec)
+    })
     return result
   }
 

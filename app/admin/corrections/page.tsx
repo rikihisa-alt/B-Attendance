@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { IS_DEMO, apiGetCorrections, apiApproveCorrection, apiRejectCorrection, adminSelect, adminApproveCorrection, adminRejectCorrection } from '@/lib/api'
+import { adminSelect, adminApproveCorrection, adminRejectCorrection } from '@/lib/api'
 import { fmtTimeShort } from '@/lib/format'
 import type { CorrectionRequest, AttendanceEvent, AttendanceEventType, CorrectionRequestStatus } from '@/types/db'
 
@@ -38,18 +38,12 @@ export default function AdminCorrectionsPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    if (IS_DEMO) {
-      const res = await apiGetCorrections(undefined, statusFilter === 'all' ? undefined : statusFilter)
-      const data = await res.json()
-      setRequests((data.data || []) as CorrectionRequest[])
-    } else {
-      const { data } = await adminSelect<CorrectionRequest[]>({
-        table: 'correction_requests',
-        filters: statusFilter === 'all' ? undefined : { status: statusFilter },
-        order: { column: 'submitted_at', ascending: false },
-      })
-      setRequests(data || [])
-    }
+    const { data } = await adminSelect<CorrectionRequest[]>({
+      table: 'correction_requests',
+      filters: statusFilter === 'all' ? undefined : { status: statusFilter },
+      order: { column: 'submitted_at', ascending: false },
+    })
+    setRequests(data || [])
     setLoading(false)
   }, [statusFilter])
 
@@ -58,22 +52,12 @@ export default function AdminCorrectionsPage() {
   const handleApprove = async (req: CorrectionRequest) => {
     if (!confirm(`${req.emp_name} (${req.emp_id}) ${req.date} の修正を承認しますか？\nこの操作で勤怠データが上書きされます。`)) return
     setSubmitting(true)
-    if (IS_DEMO) {
-      const res = await apiApproveCorrection(req.id)
+    const res = await adminApproveCorrection(req.id)
+    if (!res.ok) {
       const data = await res.json()
-      if (!res.ok) {
-        showToast(data.error || '承認失敗', 'error')
-        setSubmitting(false)
-        return
-      }
-    } else {
-      const res = await adminApproveCorrection(req.id)
-      if (!res.ok) {
-        const data = await res.json()
-        showToast(data.error || '承認失敗', 'error')
-        setSubmitting(false)
-        return
-      }
+      showToast(data.error || '承認失敗', 'error')
+      setSubmitting(false)
+      return
     }
     showToast('修正を承認しました', 'success')
     await load()
@@ -89,22 +73,12 @@ export default function AdminCorrectionsPage() {
     if (!rejectingId) return
     if (!rejectReason.trim()) { showToast('却下理由を入力してください', 'error'); return }
     setSubmitting(true)
-    if (IS_DEMO) {
-      const res = await apiRejectCorrection(rejectingId, rejectReason.trim())
+    const res = await adminRejectCorrection(rejectingId, rejectReason.trim())
+    if (!res.ok) {
       const data = await res.json()
-      if (!res.ok) {
-        showToast(data.error || '却下失敗', 'error')
-        setSubmitting(false)
-        return
-      }
-    } else {
-      const res = await adminRejectCorrection(rejectingId, rejectReason.trim())
-      if (!res.ok) {
-        const data = await res.json()
-        showToast(data.error || '却下失敗', 'error')
-        setSubmitting(false)
-        return
-      }
+      showToast(data.error || '却下失敗', 'error')
+      setSubmitting(false)
+      return
     }
     showToast('修正を却下しました', 'info')
     setRejectingId(null)

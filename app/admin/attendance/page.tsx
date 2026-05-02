@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { IS_DEMO, apiGetEmployees, apiGetAttendance, apiUpdateAttendance, adminSelect, adminUpdateAdminNote } from '@/lib/api'
+import { adminSelect, adminUpdateAdminNote } from '@/lib/api'
 import { calcDay, sortedEvents } from '@/lib/attendance'
 import { fmtTimeShort, formatMinutes, dowJa } from '@/lib/format'
 import type { Employee, Attendance, AttendanceEvent, AttendanceEventType } from '@/types/db'
@@ -42,22 +42,14 @@ function AttendancePageInner() {
   }
 
   const loadEmployees = useCallback(async () => {
-    if (IS_DEMO) {
-      const res = await apiGetEmployees()
-      const data = await res.json()
-      const list = (data.data || []) as Employee[]
-      setEmployees(list)
-      if (!selectedEmp && list.length > 0) setSelectedEmp(list[0].id)
-    } else {
-      const { data } = await adminSelect<Employee[]>({
-        table: 'employees',
-        filters: { status: 'active' },
-        order: { column: 'id' },
-      })
-      const list = data || []
-      setEmployees(list)
-      if (!selectedEmp && list.length > 0) setSelectedEmp(list[0].id)
-    }
+    const { data } = await adminSelect<Employee[]>({
+      table: 'employees',
+      filters: { status: 'active' },
+      order: { column: 'id' },
+    })
+    const list = data || []
+    setEmployees(list)
+    if (!selectedEmp && list.length > 0) setSelectedEmp(list[0].id)
   }, [selectedEmp])
 
   useEffect(() => { loadEmployees() }, [loadEmployees])
@@ -75,19 +67,13 @@ function AttendancePageInner() {
     const endDate = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
 
     const recordMap: Record<string, Attendance> = {}
-    if (IS_DEMO) {
-      const res = await apiGetAttendance(selectedEmp, startDate, endDate)
-      const data = await res.json()
-      ;(data.data || []).forEach((r: Attendance) => { recordMap[r.date] = r })
-    } else {
-      const { data } = await adminSelect<Attendance[]>({
-        table: 'attendance',
-        filters: { emp_id: selectedEmp },
-        gte: { column: 'date', value: startDate },
-        lte: { column: 'date', value: endDate },
-      })
-      ;(data || []).forEach(r => { recordMap[r.date] = r })
-    }
+    const { data } = await adminSelect<Attendance[]>({
+      table: 'attendance',
+      filters: { emp_id: selectedEmp },
+      gte: { column: 'date', value: startDate },
+      lte: { column: 'date', value: endDate },
+    })
+    ;(data || []).forEach(r => { recordMap[r.date] = r })
 
     const list: Row[] = []
     for (let i = 1; i <= lastDay; i++) {
@@ -120,20 +106,12 @@ function AttendancePageInner() {
   const saveAdminNote = async () => {
     if (!detail) return
     setSavingNote(true)
-    if (IS_DEMO) {
-      await apiUpdateAttendance({
-        empId: selectedEmp,
-        date: detail.date,
-        adminNote,
-      })
-    } else {
-      const res = await adminUpdateAdminNote(selectedEmp, detail.date, adminNote)
-      if (!res.ok) {
-        const data = await res.json()
-        showToast(data.error || '保存失敗', 'error')
-        setSavingNote(false)
-        return
-      }
+    const res = await adminUpdateAdminNote(selectedEmp, detail.date, adminNote)
+    if (!res.ok) {
+      const data = await res.json()
+      showToast(data.error || '保存失敗', 'error')
+      setSavingNote(false)
+      return
     }
     showToast('管理者メモを保存しました', 'success')
     setSavingNote(false)

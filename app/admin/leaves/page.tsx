@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { IS_DEMO, apiGetLeaves, apiApproveLeave, apiRejectLeave, adminSelect, adminApproveLeave, adminRejectLeave } from '@/lib/api'
+import { adminSelect, adminApproveLeave, adminRejectLeave } from '@/lib/api'
 import type { LeaveRequest, LeaveType, LeaveRequestStatus } from '@/types/db'
 
 const LEAVE_TYPE_LABEL: Record<LeaveType, string> = {
@@ -44,18 +44,12 @@ export default function AdminLeavesPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    if (IS_DEMO) {
-      const res = await apiGetLeaves(undefined, statusFilter === 'all' ? undefined : statusFilter)
-      const data = await res.json()
-      setLeaves((data.data || []) as LeaveRequest[])
-    } else {
-      const { data } = await adminSelect<LeaveRequest[]>({
-        table: 'leave_requests',
-        filters: statusFilter === 'all' ? undefined : { status: statusFilter },
-        order: { column: 'submitted_at', ascending: false },
-      })
-      setLeaves(data || [])
-    }
+    const { data } = await adminSelect<LeaveRequest[]>({
+      table: 'leave_requests',
+      filters: statusFilter === 'all' ? undefined : { status: statusFilter },
+      order: { column: 'submitted_at', ascending: false },
+    })
+    setLeaves(data || [])
     setLoading(false)
   }, [statusFilter])
 
@@ -64,22 +58,12 @@ export default function AdminLeavesPage() {
   const handleApprove = async (l: LeaveRequest) => {
     if (!confirm(`${l.emp_name} (${l.emp_id}) ${l.from_date}〜${l.to_date} の休暇申請を承認しますか？`)) return
     setSubmitting(true)
-    if (IS_DEMO) {
-      const res = await apiApproveLeave(l.id)
+    const res = await adminApproveLeave(l.id)
+    if (!res.ok) {
       const data = await res.json()
-      if (!res.ok) {
-        showToast(data.error || '承認失敗', 'error')
-        setSubmitting(false)
-        return
-      }
-    } else {
-      const res = await adminApproveLeave(l.id)
-      if (!res.ok) {
-        const data = await res.json()
-        showToast(data.error || '承認失敗', 'error')
-        setSubmitting(false)
-        return
-      }
+      showToast(data.error || '承認失敗', 'error')
+      setSubmitting(false)
+      return
     }
     showToast('休暇申請を承認しました', 'success')
     await load()
@@ -90,22 +74,12 @@ export default function AdminLeavesPage() {
     if (!rejectingId) return
     if (!rejectReason.trim()) { showToast('却下理由を入力してください', 'error'); return }
     setSubmitting(true)
-    if (IS_DEMO) {
-      const res = await apiRejectLeave(rejectingId, rejectReason.trim())
+    const res = await adminRejectLeave(rejectingId, rejectReason.trim())
+    if (!res.ok) {
       const data = await res.json()
-      if (!res.ok) {
-        showToast(data.error || '却下失敗', 'error')
-        setSubmitting(false)
-        return
-      }
-    } else {
-      const res = await adminRejectLeave(rejectingId, rejectReason.trim())
-      if (!res.ok) {
-        const data = await res.json()
-        showToast(data.error || '却下失敗', 'error')
-        setSubmitting(false)
-        return
-      }
+      showToast(data.error || '却下失敗', 'error')
+      setSubmitting(false)
+      return
     }
     showToast('休暇申請を却下しました', 'info')
     setRejectingId(null)

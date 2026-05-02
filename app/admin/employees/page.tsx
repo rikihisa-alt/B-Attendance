@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { IS_DEMO, apiGetEmployees, apiCreateEmployee, apiUpdateEmployee, apiResetPassword, adminSelect } from '@/lib/api'
+import { adminSelect } from '@/lib/api'
 import type { Employee } from '@/types/db'
 
 function EmployeesPageInner() {
@@ -39,17 +39,11 @@ function EmployeesPageInner() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    if (IS_DEMO) {
-      const res = await apiGetEmployees()
-      const data = await res.json()
-      setEmployees((data.data || []) as Employee[])
-    } else {
-      const { data } = await adminSelect<Employee[]>({
-        table: 'employees',
-        order: { column: 'id' },
-      })
-      setEmployees(data || [])
-    }
+    const { data } = await adminSelect<Employee[]>({
+      table: 'employees',
+      order: { column: 'id' },
+    })
+    setEmployees(data || [])
     setLoading(false)
   }, [])
 
@@ -107,7 +101,6 @@ function EmployeesPageInner() {
     }
     setSubmitting(true)
     if (editingId) {
-      // 更新
       const updates = {
         name: formName.trim(),
         kana: formKana.trim() || null,
@@ -118,24 +111,19 @@ function EmployeesPageInner() {
         paid_leave_used: Number(formPaidUsed),
         status: formStatus,
       }
-      if (IS_DEMO) {
-        await apiUpdateEmployee(editingId, updates)
-      } else {
-        const res = await fetch(`/api/admin/employees/${editingId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updates),
-        })
-        const data = await res.json()
-        if (!res.ok) {
-          setModalError(data.error || '更新に失敗しました')
-          setSubmitting(false)
-          return
-        }
+      const res = await fetch(`/api/admin/employees/${editingId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setModalError(data.error || '更新に失敗しました')
+        setSubmitting(false)
+        return
       }
       showToast('従業員情報を更新しました', 'success')
     } else {
-      // 新規作成
       const empPayload = {
         id: formId.trim().toUpperCase(),
         password: formPw,
@@ -147,29 +135,16 @@ function EmployeesPageInner() {
         paid_leave_total: Number(formPaidTotal),
         paid_leave_used: Number(formPaidUsed),
       }
-      if (IS_DEMO) {
-        const res = await apiCreateEmployee({
-          ...empPayload,
-          // demo 用ペイロードに変換
-        }, formPw)
-        const data = await res.json()
-        if (!res.ok) {
-          setModalError(data.error || '登録に失敗しました')
-          setSubmitting(false)
-          return
-        }
-      } else {
-        const res = await fetch('/api/admin/employees', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(empPayload),
-        })
-        const data = await res.json()
-        if (!res.ok) {
-          setModalError(data.error || '登録に失敗しました')
-          setSubmitting(false)
-          return
-        }
+      const res = await fetch('/api/admin/employees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(empPayload),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setModalError(data.error || '登録に失敗しました')
+        setSubmitting(false)
+        return
       }
       showToast('従業員を登録しました', 'success')
     }
@@ -184,24 +159,15 @@ function EmployeesPageInner() {
       setResetMsg('4文字以上の新パスワードを入力してください')
       return
     }
-    if (IS_DEMO) {
-      const res = await apiResetPassword(editingId, formResetPw)
-      const data = await res.json()
-      if (!res.ok) {
-        setResetMsg(data.error || 'リセット失敗')
-        return
-      }
-    } else {
-      const res = await fetch(`/api/admin/employees/${editingId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reset_password: formResetPw }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        setResetMsg(data.error || 'リセット失敗')
-        return
-      }
+    const res = await fetch(`/api/admin/employees/${editingId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reset_password: formResetPw }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      setResetMsg(data.error || 'リセット失敗')
+      return
     }
     setResetMsg(`新パスワード「${formResetPw}」を設定しました。次回ログイン時に本人がパスワード変更を求められます。`)
     setFormResetPw('')
@@ -210,15 +176,11 @@ function EmployeesPageInner() {
   const handleDelete = async () => {
     if (!editingId) return
     if (!confirm(`従業員 ${editingId} を退職扱いにしますか？\n（データは保持され、status=inactiveになります）`)) return
-    if (IS_DEMO) {
-      await apiUpdateEmployee(editingId, { status: 'inactive' })
-    } else {
-      const res = await fetch(`/api/admin/employees/${editingId}`, { method: 'DELETE' })
-      const data = await res.json()
-      if (!res.ok) {
-        showToast(data.error || '退職処理失敗', 'error')
-        return
-      }
+    const res = await fetch(`/api/admin/employees/${editingId}`, { method: 'DELETE' })
+    const data = await res.json()
+    if (!res.ok) {
+      showToast(data.error || '退職処理失敗', 'error')
+      return
     }
     showToast('退職扱いにしました', 'info')
     setShowModal(false)

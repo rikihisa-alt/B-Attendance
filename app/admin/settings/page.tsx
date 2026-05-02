@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { IS_DEMO, apiGetSettings, apiUpdateSettings, adminSelect } from '@/lib/api'
+import { adminSelect } from '@/lib/api'
 import type { Settings } from '@/types/db'
 
 export default function AdminSettingsPage() {
@@ -33,17 +33,9 @@ export default function AdminSettingsPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    let s: Settings | null = null
-    if (IS_DEMO) {
-      const res = await apiGetSettings()
-      const data = await res.json()
-      s = data.data as Settings | null
-    } else {
-      const { data } = await adminSelect<Settings>({
-        table: 'settings', filters: { id: 1 }, single: true,
-      })
-      s = data
-    }
+    const { data: s } = await adminSelect<Settings>({
+      table: 'settings', filters: { id: 1 }, single: true,
+    })
     if (s) {
       setSettings(s)
       setCompanyName(s.company_name || '')
@@ -74,20 +66,16 @@ export default function AdminSettingsPage() {
       monthly_overtime_warning: Number(monthWarn),
       admin_id: adminIdInput.trim(),
     }
-    if (IS_DEMO) {
-      await apiUpdateSettings(updates)
-    } else {
-      const res = await fetch('/api/admin/settings', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        showToast(data.error || '保存失敗', 'error')
-        setSaving(false)
-        return
-      }
+    const res = await fetch('/api/admin/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      showToast(data.error || '保存失敗', 'error')
+      setSaving(false)
+      return
     }
     showToast('設定を保存しました', 'success')
     await load()
@@ -102,12 +90,6 @@ export default function AdminSettingsPage() {
     if (newPw1 === currentPw) { setPwError('現在のパスワードと異なるものを設定してください'); return }
 
     setPwChanging(true)
-    if (IS_DEMO) {
-      // Demo モードでは平文比較
-      showToast('DEMOモードでは管理者パスワードは admin 固定です', 'info')
-      setPwChanging(false)
-      return
-    }
     const res = await fetch('/api/admin/settings', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },

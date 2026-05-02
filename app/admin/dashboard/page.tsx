@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { IS_DEMO, apiGetEmployees, apiGetAttendance, apiGetCorrections, apiGetLeaves, apiGetSettings, adminSelect } from '@/lib/api'
+import { adminSelect } from '@/lib/api'
 import { calcDay } from '@/lib/attendance'
 import { dowJa, fmtTimeShort } from '@/lib/format'
 import type { Employee, Attendance, AttendanceEvent, Settings } from '@/types/db'
@@ -71,61 +71,29 @@ export default function AdminDashboardPage() {
     const wideStart = sinceIso < monthStart ? sinceIso : monthStart
     const wideEnd = today > monthEnd ? today : monthEnd
 
-    let emps: Employee[] = []
-    let stngs: Settings | null = null
-    let pendingC = 0, pendingL = 0
-    let allRecords: Attendance[] = []
-
-    if (IS_DEMO) {
-      const [empRes, sRes, cRes, lRes] = await Promise.all([
-        apiGetEmployees(),
-        apiGetSettings(),
-        apiGetCorrections(undefined, 'pending'),
-        apiGetLeaves(undefined, 'pending'),
-      ])
-      const [empData, sData, cData, lData] = await Promise.all([
-        empRes.json(), sRes.json(), cRes.json(), lRes.json(),
-      ])
-      emps = (empData.data || []) as Employee[]
-      stngs = sData.data as Settings | null
-      pendingC = cData.data?.length || 0
-      pendingL = lData.data?.length || 0
-
-      // DEMO はカット日付指定の単一クエリが無いので per-emp 並列で
-      const active = emps.filter(e => e.status === 'active')
-      const recsPer = await Promise.all(
-        active.map(emp =>
-          apiGetAttendance(emp.id, wideStart, wideEnd)
-            .then(r => r.json())
-            .then(d => (d.data || []) as Attendance[])
-        )
-      )
-      allRecords = recsPer.flat()
-    } else {
-      const [empRes, sRes, ccRes, lcRes] = await Promise.all([
-        adminSelect<Employee[]>({ table: 'employees', filters: { status: 'active' } }),
-        adminSelect<Settings>({ table: 'settings', filters: { id: 1 }, single: true }),
-        adminSelect({ table: 'correction_requests', filters: { status: 'pending' }, count_only: true }),
-        adminSelect({ table: 'leave_requests', filters: { status: 'pending' }, count_only: true }),
-      ])
-      emps = empRes.data || []
-      stngs = sRes.data
-      pendingC = ccRes.count || 0
-      pendingL = lcRes.count || 0
-
-      const empIds = emps.filter(e => e.status === 'active').map(e => e.id)
-      if (empIds.length > 0) {
-        const { data: recs } = await adminSelect<Attendance[]>({
-          table: 'attendance',
-          in_filters: { emp_id: empIds },
-          gte: { column: 'date', value: wideStart },
-          lte: { column: 'date', value: wideEnd },
-        })
-        allRecords = recs || []
-      }
-    }
+    const [empRes, sRes, ccRes, lcRes] = await Promise.all([
+      adminSelect<Employee[]>({ table: 'employees', filters: { status: 'active' } }),
+      adminSelect<Settings>({ table: 'settings', filters: { id: 1 }, single: true }),
+      adminSelect({ table: 'correction_requests', filters: { status: 'pending' }, count_only: true }),
+      adminSelect({ table: 'leave_requests', filters: { status: 'pending' }, count_only: true }),
+    ])
+    const emps: Employee[] = empRes.data || []
+    const stngs: Settings | null = sRes.data
+    const pendingC = ccRes.count || 0
+    const pendingL = lcRes.count || 0
 
     const active = emps.filter(e => e.status === 'active')
+    const empIds = active.map(e => e.id)
+    let allRecords: Attendance[] = []
+    if (empIds.length > 0) {
+      const { data: recs } = await adminSelect<Attendance[]>({
+        table: 'attendance',
+        in_filters: { emp_id: empIds },
+        gte: { column: 'date', value: wideStart },
+        lte: { column: 'date', value: wideEnd },
+      })
+      allRecords = recs || []
+    }
     setEmployees(active)
     setSettings(stngs)
     setPendingCount(pendingC + pendingL)

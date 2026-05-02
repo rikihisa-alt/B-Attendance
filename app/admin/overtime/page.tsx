@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { IS_DEMO, apiGetEmployees, apiGetAttendance, apiGetSettings, adminSelect } from '@/lib/api'
+import { adminSelect } from '@/lib/api'
 import { calcDay } from '@/lib/attendance'
 import { formatMinutes } from '@/lib/format'
 import type { Employee, Attendance, AttendanceEvent, Settings } from '@/types/db'
@@ -43,48 +43,28 @@ export default function AdminOvertimePage() {
     const lastDay = new Date(y, m, 0).getDate()
     const endDate = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
 
-    let emps: Employee[] = []
-    let s: Settings | null = null
+    const [empRes, sRes] = await Promise.all([
+      adminSelect<Employee[]>({
+        table: 'employees', filters: { status: 'active' },
+        order: { column: 'id' },
+      }),
+      adminSelect<Settings>({
+        table: 'settings', filters: { id: 1 }, single: true,
+      }),
+    ])
+    const emps = empRes.data || []
+    const s = sRes.data
+
+    const empIds = emps.map(e => e.id)
     let allRecords: Attendance[] = []
-
-    if (IS_DEMO) {
-      const [empRes, sRes] = await Promise.all([apiGetEmployees(), apiGetSettings()])
-      const [empJson, sData] = await Promise.all([empRes.json(), sRes.json()])
-      emps = (empJson.data || []) as Employee[]
-      s = sData.data as Settings | null
-
-      // DEMO はカット日付指定で per-emp 並列で
-      const recsPer = await Promise.all(
-        emps.map(emp =>
-          apiGetAttendance(emp.id, startDate, endDate)
-            .then(r => r.json())
-            .then(d => (d.data || []) as Attendance[])
-        )
-      )
-      allRecords = recsPer.flat()
-    } else {
-      const [empRes, sRes] = await Promise.all([
-        adminSelect<Employee[]>({
-          table: 'employees', filters: { status: 'active' },
-          order: { column: 'id' },
-        }),
-        adminSelect<Settings>({
-          table: 'settings', filters: { id: 1 }, single: true,
-        }),
-      ])
-      emps = empRes.data || []
-      s = sRes.data
-
-      const empIds = emps.map(e => e.id)
-      if (empIds.length > 0) {
-        const { data } = await adminSelect<Attendance[]>({
-          table: 'attendance',
-          in_filters: { emp_id: empIds },
-          gte: { column: 'date', value: startDate },
-          lte: { column: 'date', value: endDate },
-        })
-        allRecords = data || []
-      }
+    if (empIds.length > 0) {
+      const { data } = await adminSelect<Attendance[]>({
+        table: 'attendance',
+        in_filters: { emp_id: empIds },
+        gte: { column: 'date', value: startDate },
+        lte: { column: 'date', value: endDate },
+      })
+      allRecords = data || []
     }
     setSettings(s)
 
