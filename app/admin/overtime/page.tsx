@@ -38,48 +38,61 @@ export default function AdminOvertimePage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    let emps: Employee[] = []
-    let s: Settings | null = null
-    if (IS_DEMO) {
-      const empRes = await apiGetEmployees()
-      const empJson = await empRes.json()
-      emps = (empJson.data || []) as Employee[]
-
-      const sRes = await apiGetSettings()
-      const sData = await sRes.json()
-      s = sData.data as Settings | null
-    } else {
-      const supabase = createClient()
-      const { data: empData } = await supabase.from('employees').select('*').eq('status', 'active').order('id')
-      emps = (empData || []) as Employee[]
-
-      const { data: sData } = await supabase.from('settings').select('*').eq('id', 1).single()
-      s = sData as Settings | null
-    }
-    setSettings(s)
 
     const [y, m] = monthStr.split('-').map(Number)
     const startDate = `${y}-${String(m).padStart(2, '0')}-01`
     const lastDay = new Date(y, m, 0).getDate()
     const endDate = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
 
-    const standardMin = (s?.standard_work_hours || 8) * 60
-    const list: Row[] = []
-    for (const emp of emps) {
-      let recs: Attendance[] = []
-      if (IS_DEMO) {
-        const res = await apiGetAttendance(emp.id, startDate, endDate)
-        const data = await res.json()
-        recs = (data.data || []) as Attendance[]
-      } else {
-        const supabase = createClient()
+    let emps: Employee[] = []
+    let s: Settings | null = null
+    let allRecords: Attendance[] = []
+
+    if (IS_DEMO) {
+      const [empRes, sRes] = await Promise.all([apiGetEmployees(), apiGetSettings()])
+      const [empJson, sData] = await Promise.all([empRes.json(), sRes.json()])
+      emps = (empJson.data || []) as Employee[]
+      s = sData.data as Settings | null
+
+      // DEMO はカット日付指定で per-emp 並列で
+      const recsPer = await Promise.all(
+        emps.map(emp =>
+          apiGetAttendance(emp.id, startDate, endDate)
+            .then(r => r.json())
+            .then(d => (d.data || []) as Attendance[])
+        )
+      )
+      allRecords = recsPer.flat()
+    } else {
+      const supabase = createClient()
+      const [empRes, sRes] = await Promise.all([
+        supabase.from('employees').select('*').eq('status', 'active').order('id'),
+        supabase.from('settings').select('*').eq('id', 1).single(),
+      ])
+      emps = (empRes.data || []) as Employee[]
+      s = sRes.data as Settings | null
+
+      const empIds = emps.map(e => e.id)
+      if (empIds.length > 0) {
         const { data } = await supabase
           .from('attendance').select('*')
-          .eq('emp_id', emp.id)
+          .in('emp_id', empIds)
           .gte('date', startDate).lte('date', endDate)
-        recs = (data || []) as Attendance[]
+        allRecords = (data || []) as Attendance[]
       }
+    }
+    setSettings(s)
 
+    const standardMin = (s?.standard_work_hours || 8) * 60
+    const recsByEmp = new Map<string, Attendance[]>()
+    for (const r of allRecords) {
+      const list = recsByEmp.get(r.emp_id) || []
+      list.push(r)
+      recsByEmp.set(r.emp_id, list)
+    }
+
+    const list: Row[] = emps.map(emp => {
+      const recs = recsByEmp.get(emp.id) || []
       let totalWorked = 0, overtime = 0, workDays = 0
       recs.forEach(r => {
         const calc = calcDay(r.events as AttendanceEvent[])
@@ -89,8 +102,8 @@ export default function AdminOvertimePage() {
           if (calc.totalWorked > standardMin) overtime += (calc.totalWorked - standardMin)
         }
       })
-      list.push({ emp, totalWorked, overtime, workDays })
-    }
+      return { emp, totalWorked, overtime, workDays }
+    })
     setRows(list)
     setLoading(false)
   }, [monthStr])

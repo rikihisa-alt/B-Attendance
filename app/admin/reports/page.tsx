@@ -77,20 +77,30 @@ export default function AdminReportsPage() {
     const endDate = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
 
     const result: Record<string, Attendance[]> = {}
-    for (const id of empIds) {
-      if (IS_DEMO) {
-        const res = await apiGetAttendance(id, startDate, endDate)
-        const data = await res.json()
-        result[id] = (data.data || []) as Attendance[]
-      } else {
-        const supabase = createClient()
-        const { data } = await supabase
-          .from('attendance').select('*')
-          .eq('emp_id', id)
-          .gte('date', startDate).lte('date', endDate)
-          .order('date')
-        result[id] = (data || []) as Attendance[]
-      }
+    for (const id of empIds) result[id] = []
+
+    if (IS_DEMO) {
+      // 並列で取得
+      const recsPer = await Promise.all(
+        empIds.map(id =>
+          apiGetAttendance(id, startDate, endDate)
+            .then(r => r.json())
+            .then(d => ({ id, recs: (d.data || []) as Attendance[] }))
+        )
+      )
+      recsPer.forEach(({ id, recs }) => { result[id] = recs })
+    } else if (empIds.length > 0) {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('attendance').select('*')
+        .in('emp_id', empIds)
+        .gte('date', startDate).lte('date', endDate)
+        .order('date')
+      ;(data || []).forEach(r => {
+        const rec = r as Attendance
+        if (!result[rec.emp_id]) result[rec.emp_id] = []
+        result[rec.emp_id].push(rec)
+      })
     }
     return result
   }

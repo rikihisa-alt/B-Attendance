@@ -55,39 +55,75 @@ export default function AdminDashboardPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
+
+    // 並列で集約クエリを発行: 従業員一覧 / 設定 / 承認待ちカウント / 直近7日の全勤怠
+    const today = todayIso()
+    const since = new Date()
+    since.setDate(since.getDate() - 7)
+    const sinceIso = since.toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' })
+
+    const month = monthIso(new Date())
+    const [y, m] = month.split('-').map(Number)
+    const monthStart = `${y}-${String(m).padStart(2, '0')}-01`
+    const lastDay = new Date(y, m, 0).getDate()
+    const monthEnd = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+
+    // 過去7日と当月どっちもカバーする日付範囲（広い方）
+    const wideStart = sinceIso < monthStart ? sinceIso : monthStart
+    const wideEnd = today > monthEnd ? today : monthEnd
+
     let emps: Employee[] = []
     let stngs: Settings | null = null
     let pendingC = 0, pendingL = 0
+    let allRecords: Attendance[] = []
 
     if (IS_DEMO) {
-      const res = await apiGetEmployees()
-      const data = await res.json()
-      emps = (data.data || []) as Employee[]
-
-      const sRes = await apiGetSettings()
-      const sData = await sRes.json()
+      const [empRes, sRes, cRes, lRes] = await Promise.all([
+        apiGetEmployees(),
+        apiGetSettings(),
+        apiGetCorrections(undefined, 'pending'),
+        apiGetLeaves(undefined, 'pending'),
+      ])
+      const [empData, sData, cData, lData] = await Promise.all([
+        empRes.json(), sRes.json(), cRes.json(), lRes.json(),
+      ])
+      emps = (empData.data || []) as Employee[]
       stngs = sData.data as Settings | null
-
-      const c = await apiGetCorrections(undefined, 'pending')
-      const cData = await c.json()
-      const l = await apiGetLeaves(undefined, 'pending')
-      const lData = await l.json()
       pendingC = cData.data?.length || 0
       pendingL = lData.data?.length || 0
+
+      // DEMO はカット日付指定の単一クエリが無いので per-emp 並列で
+      const active = emps.filter(e => e.status === 'active')
+      const recsPer = await Promise.all(
+        active.map(emp =>
+          apiGetAttendance(emp.id, wideStart, wideEnd)
+            .then(r => r.json())
+            .then(d => (d.data || []) as Attendance[])
+        )
+      )
+      allRecords = recsPer.flat()
     } else {
       const supabase = createClient()
-      const { data: empData } = await supabase.from('employees').select('*').eq('status', 'active')
-      emps = (empData || []) as Employee[]
+      const [empRes, sRes, ccRes, lcRes] = await Promise.all([
+        supabase.from('employees').select('*').eq('status', 'active'),
+        supabase.from('settings').select('*').eq('id', 1).single(),
+        supabase.from('correction_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+        supabase.from('leave_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+      ])
+      emps = (empRes.data || []) as Employee[]
+      stngs = sRes.data as Settings | null
+      pendingC = ccRes.count || 0
+      pendingL = lcRes.count || 0
 
-      const { data: sData } = await supabase.from('settings').select('*').eq('id', 1).single()
-      stngs = sData as Settings | null
-
-      const { count: cc } = await supabase
-        .from('correction_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending')
-      const { count: lc } = await supabase
-        .from('leave_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending')
-      pendingC = cc || 0
-      pendingL = lc || 0
+      // 単一クエリで全 active 従業員 × 期間の勤怠をまとめて取る
+      const empIds = emps.filter(e => e.status === 'active').map(e => e.id)
+      if (empIds.length > 0) {
+        const { data: recs } = await supabase
+          .from('attendance').select('*')
+          .in('emp_id', empIds)
+          .gte('date', wideStart).lte('date', wideEnd)
+        allRecords = (recs || []) as Attendance[]
+      }
     }
 
     const active = emps.filter(e => e.status === 'active')
@@ -95,50 +131,38 @@ export default function AdminDashboardPage() {
     setSettings(stngs)
     setPendingCount(pendingC + pendingL)
 
-    // 本日の勤務状況
-    const today = todayIso()
-    const rows: TodayRow[] = []
-    for (const emp of active) {
-      let rec: Attendance | null = null
-      if (IS_DEMO) {
-        const res = await apiGetAttendance(emp.id, today, today)
-        const data = await res.json()
-        rec = data.data?.[0] || null
-      } else {
-        const supabase = createClient()
-        const { data } = await supabase
-          .from('attendance').select('*')
-          .eq('emp_id', emp.id).eq('date', today).maybeSingle()
-        rec = (data as Attendance | null) || null
-      }
-      rows.push({ emp, rec })
+    // emp_id ごとに record をインデックス
+    const recByEmpDate = new Map<string, Attendance>()
+    for (const r of allRecords) {
+      recByEmpDate.set(`${r.emp_id}:${r.date}`, r)
     }
+    const recsByEmp = new Map<string, Attendance[]>()
+    for (const r of allRecords) {
+      const list = recsByEmp.get(r.emp_id) || []
+      list.push(r)
+      recsByEmp.set(r.emp_id, list)
+    }
+
+    // 本日の勤務状況
+    const rows: TodayRow[] = active.map(emp => ({
+      emp,
+      rec: recByEmpDate.get(`${emp.id}:${today}`) || null,
+    }))
     setTodayRows(rows)
 
     // アラート生成
     const ats: Alert[] = []
     const monthLimit = stngs?.monthly_overtime_limit ?? 45
     const monthWarn = stngs?.monthly_overtime_warning ?? 36
+    const standardMin = (stngs?.standard_work_hours ?? 8) * 60
 
-    // 1. 直近7日の未退勤打刻漏れ
-    const since = new Date()
-    since.setDate(since.getDate() - 7)
-    const sinceIso = since.toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' })
     for (const emp of active) {
-      let recs: Attendance[] = []
-      if (IS_DEMO) {
-        const res = await apiGetAttendance(emp.id, sinceIso, today)
-        const data = await res.json()
-        recs = (data.data || []) as Attendance[]
-      } else {
-        const supabase = createClient()
-        const { data } = await supabase
-          .from('attendance').select('*')
-          .eq('emp_id', emp.id).gte('date', sinceIso).lte('date', today)
-        recs = (data || []) as Attendance[]
-      }
-      for (const r of recs) {
+      const empRecs = recsByEmp.get(emp.id) || []
+
+      // 1. 直近7日の未退勤打刻漏れ・休憩終了打刻漏れ
+      for (const r of empRecs) {
         if (r.date === today) continue
+        if (r.date < sinceIso) continue
         const calc = calcDay(r.events as AttendanceEvent[])
         if (calc.firstIn && !calc.lastOut && !calc.isOnBreak) {
           ats.push({
@@ -161,10 +185,8 @@ export default function AdminDashboardPage() {
           })
         }
       }
-    }
 
-    // 2. 初回ログイン未完了
-    for (const emp of active) {
+      // 2. 初回ログイン未完了
       if (emp.first_login) {
         ats.push({
           severity: 'info',
@@ -175,30 +197,11 @@ export default function AdminDashboardPage() {
           actionHref: `/admin/employees?id=${emp.id}`,
         })
       }
-    }
 
-    // 3. 36協定上限超過 / 警告ライン超過（今月）
-    const month = monthIso(new Date())
-    const [y, m] = month.split('-').map(Number)
-    const monthStart = `${y}-${String(m).padStart(2, '0')}-01`
-    const lastDay = new Date(y, m, 0).getDate()
-    const monthEnd = `${y}-${String(m).padStart(2, '0')}-${lastDay}`
-    for (const emp of active) {
-      let monthData: Attendance[] = []
-      if (IS_DEMO) {
-        const res = await apiGetAttendance(emp.id, monthStart, monthEnd)
-        const data = await res.json()
-        monthData = (data.data || []) as Attendance[]
-      } else {
-        const supabase = createClient()
-        const { data } = await supabase
-          .from('attendance').select('*')
-          .eq('emp_id', emp.id).gte('date', monthStart).lte('date', monthEnd)
-        monthData = (data || []) as Attendance[]
-      }
+      // 3. 36協定上限超過 / 警告ライン超過（今月）
       let overtime = 0
-      const standardMin = 8 * 60
-      monthData.forEach(r => {
+      empRecs.forEach(r => {
+        if (r.date < monthStart || r.date > monthEnd) return
         const calc = calcDay(r.events as AttendanceEvent[])
         if (calc.totalWorked > standardMin) overtime += (calc.totalWorked - standardMin)
       })

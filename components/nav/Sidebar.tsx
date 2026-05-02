@@ -1,6 +1,7 @@
 'use client'
 
-import { usePathname, useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 
 interface SidebarProps {
   pendingCount?: number
@@ -16,7 +17,6 @@ interface NavItem {
 
 export default function Sidebar({ pendingCount }: SidebarProps) {
   const pathname = usePathname()
-  const router = useRouter()
 
   const workItems: NavItem[] = [
     { href: '/home', iconId: 'i-clock', labelJa: '打刻', labelEn: 'CLOCK' },
@@ -31,11 +31,12 @@ export default function Sidebar({ pendingCount }: SidebarProps) {
   const renderItem = (item: NavItem) => {
     const isActive = pathname === item.href
     return (
-      <button
+      <Link
         key={item.href}
-        type="button"
+        href={item.href}
+        prefetch
         className={`nav-item${isActive ? ' active' : ''}`}
-        onClick={() => router.push(item.href)}
+        style={{ textDecoration: 'none' }}
       >
         <span className="nav-item-content">
           <svg className="icon-svg-sm"><use href={`#${item.iconId}`} /></svg>
@@ -45,7 +46,7 @@ export default function Sidebar({ pendingCount }: SidebarProps) {
           </span>
         </span>
         {item.badge && item.badge > 0 ? <span className="nav-badge">{item.badge}</span> : null}
-      </button>
+      </Link>
     )
   }
 
