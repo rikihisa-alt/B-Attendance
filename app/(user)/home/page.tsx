@@ -41,19 +41,16 @@ function todayIsoDate() {
   return fmt.format(new Date())
 }
 
-function fmtJpDate(d: Date) {
-  const fmt = new Intl.DateTimeFormat('ja-JP', {
-    timeZone: 'Asia/Tokyo', year: 'numeric', month: 'long', day: 'numeric', weekday: 'short',
-  })
-  return fmt.format(d)
-}
-
 function fmtIsoDateLabel(d: Date) {
-  const ja = fmtJpDate(d)
-  const m = ja.match(/(\d+)年(\d+)月(\d+)日（?(.)）?/)
-  if (!m) return ja
-  const [, y, mo, da, w] = m
-  return `${y}/${mo.padStart(2, '0')}/${da.padStart(2, '0')} (${w})`
+  // ja-JP の Intl.DateTimeFormat は環境によって "2026年5月3日(日)" や
+  // "2026/5/3(日)" など括弧が半角/全角で揺れるため、曜日だけ別フォーマッタで取って
+  // 日付部分は en-CA (YYYY-MM-DD) で確定させる。
+  const ymd = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' })
+  const [y, m, da] = ymd.split('-')
+  const weekday = new Intl.DateTimeFormat('ja-JP', {
+    timeZone: 'Asia/Tokyo', weekday: 'short',
+  }).format(d)
+  return `${y}/${m}/${da} (${weekday})`
 }
 
 export default function HomePage() {

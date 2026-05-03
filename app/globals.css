@@ -1534,6 +1534,9 @@ textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 
   .card-body { padding: 14px; }
 
   /* 打刻パネル: 縦積み、ボタンも見やすく */
+  .clock-panel-header { padding: 10px 14px; }
+  .clock-panel-title { white-space: nowrap; font-size: 12px; letter-spacing: 0.08em; }
+  .clock-panel-meta { display: none; }
   .clock-grid { grid-template-columns: 1fr; }
   .clock-display {
     padding: 18px 18px;
