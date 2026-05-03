@@ -224,60 +224,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true })
     }
 
-    // ---- LEAVE REQUESTS ----
-    case 'submit-leave': {
-      const lr = {
-        id: `LR-${Date.now()}`,
-        emp_id: params.empId, emp_name: params.empName,
-        type: params.type, from_date: params.fromDate, to_date: params.toDate,
-        reason: params.reason || null,
-        status: 'pending' as const,
-        submitted_at: new Date().toISOString(),
-        reviewed_at: null, reviewed_by: null,
-        withdrawn_at: null, reject_reason: null,
-        created_at: new Date().toISOString(),
-      }
-      db.leave_requests.push(lr)
-      return NextResponse.json({ success: true, data: lr })
-    }
-
-    case 'get-leaves': {
-      let list3 = db.leave_requests
-      if (params.empId) list3 = list3.filter(l => l.emp_id === params.empId)
-      if (params.status) list3 = list3.filter(l => l.status === params.status)
-      return NextResponse.json({ data: list3.sort((a, b) => b.submitted_at.localeCompare(a.submitted_at)) })
-    }
-
-    case 'withdraw-leave': {
-      const lr2 = db.leave_requests.find(l => l.id === params.id && l.status === 'pending')
-      if (lr2) {
-        lr2.status = 'withdrawn'
-        lr2.withdrawn_at = new Date().toISOString()
-      }
-      return NextResponse.json({ success: true })
-    }
-
-    case 'approve-leave': {
-      const lr3 = db.leave_requests.find(l => l.id === params.id)
-      if (lr3) {
-        lr3.status = 'approved'
-        lr3.reviewed_at = new Date().toISOString()
-        lr3.reviewed_by = 'admin'
-      }
-      return NextResponse.json({ success: true })
-    }
-
-    case 'reject-leave': {
-      const lr4 = db.leave_requests.find(l => l.id === params.id)
-      if (lr4) {
-        lr4.status = 'rejected'
-        lr4.reviewed_at = new Date().toISOString()
-        lr4.reviewed_by = 'admin'
-        lr4.reject_reason = params.reason || ''
-      }
-      return NextResponse.json({ success: true })
-    }
-
     // ---- SETTINGS ----
     case 'get-settings': {
       return NextResponse.json({ data: db.settings })

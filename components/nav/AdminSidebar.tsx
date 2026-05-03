@@ -13,17 +13,15 @@ interface NavItem {
 
 interface AdminSidebarProps {
   pendingCorrections?: number
-  pendingLeaves?: number
 }
 
-export default function AdminSidebar({ pendingCorrections, pendingLeaves }: AdminSidebarProps) {
+export default function AdminSidebar({ pendingCorrections }: AdminSidebarProps) {
   const pathname = usePathname()
 
   const items: NavItem[] = [
     { href: '/admin/dashboard', iconId: 'i-dashboard', labelJa: 'ダッシュボード', labelEn: 'DASHBOARD' },
     { href: '/admin/attendance', iconId: 'i-list', labelJa: '勤怠一覧', labelEn: 'RECORDS' },
     { href: '/admin/corrections', iconId: 'i-check', labelJa: '承認待ち', labelEn: 'APPROVALS', badge: pendingCorrections },
-    { href: '/admin/leaves', iconId: 'i-calendar', labelJa: '休暇承認', labelEn: 'LEAVE APPROVALS', badge: pendingLeaves },
     { href: '/admin/overtime', iconId: 'i-warning', labelJa: '残業管理', labelEn: 'OVERTIME' },
     { href: '/admin/employees', iconId: 'i-users', labelJa: '従業員管理', labelEn: 'EMPLOYEES' },
     { href: '/admin/audit', iconId: 'i-list', labelJa: 'ログ閲覧', labelEn: 'AUDIT LOG' },

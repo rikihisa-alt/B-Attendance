@@ -88,32 +88,6 @@ export async function apiRejectCorrection(id: string, reason: string) {
   return new Response(JSON.stringify({ success: true }))
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function apiSubmitLeave(params: any) {
-  if (IS_DEMO) return demoCall('submit-leave', params)
-  return new Response(JSON.stringify({ success: true }))
-}
-
-export async function apiGetLeaves(empId?: string, status?: string) {
-  if (IS_DEMO) return demoCall('get-leaves', { empId, status })
-  return new Response(JSON.stringify({ data: [] }))
-}
-
-export async function apiWithdrawLeave(id: string) {
-  if (IS_DEMO) return demoCall('withdraw-leave', { id })
-  return new Response(JSON.stringify({ success: true }))
-}
-
-export async function apiApproveLeave(id: string) {
-  if (IS_DEMO) return demoCall('approve-leave', { id })
-  return new Response(JSON.stringify({ success: true }))
-}
-
-export async function apiRejectLeave(id: string, reason: string) {
-  if (IS_DEMO) return demoCall('reject-leave', { id, reason })
-  return new Response(JSON.stringify({ success: true }))
-}
-
 export async function apiGetSettings() {
   if (IS_DEMO) return demoCall('get-settings')
   return new Response(JSON.stringify({ data: null }))
@@ -199,22 +173,6 @@ export async function adminRejectCorrection(id: string, reason: string) {
   })
 }
 
-export async function adminApproveLeave(id: string) {
-  return fetch(`/api/admin/leaves/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'approve' }),
-  })
-}
-
-export async function adminRejectLeave(id: string, reason: string) {
-  return fetch(`/api/admin/leaves/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'reject', reject_reason: reason }),
-  })
-}
-
 export async function adminUpdateAdminNote(empId: string, date: string, adminNote: string) {
   return fetch('/api/admin/attendance/admin-note', {
     method: 'POST',
@@ -228,7 +186,7 @@ export async function adminUpdateAdminNote(empId: string, date: string, adminNot
 // =============================================================
 
 interface UserSelectParams {
-  table: 'attendance' | 'leave_requests' | 'correction_requests' | 'employees' | 'settings'
+  table: 'attendance' | 'correction_requests' | 'employees' | 'settings'
   columns?: string
   filters?: Record<string, string | number | boolean | null>
   gte?: { column: string; value: string | number }

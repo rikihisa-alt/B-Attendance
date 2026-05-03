@@ -27,8 +27,6 @@ export interface Employee {
   dept: string | null
   position: string | null
   status: 'active' | 'inactive'
-  paid_leave_total: number
-  paid_leave_used: number
   first_login: boolean
   pw_changed_at: string | null
   pw_reset_at: string | null
@@ -82,26 +80,6 @@ export interface CorrectionRequest {
   created_at: string
 }
 
-export type LeaveType = 'paid' | 'paid_am' | 'paid_pm' | 'sick' | 'special' | 'absence'
-export type LeaveRequestStatus = 'pending' | 'approved' | 'rejected' | 'withdrawn'
-
-export interface LeaveRequest {
-  id: string
-  emp_id: string
-  emp_name: string
-  type: LeaveType
-  from_date: string
-  to_date: string
-  reason: string | null
-  status: LeaveRequestStatus
-  submitted_at: string
-  reviewed_at: string | null
-  reviewed_by: string | null
-  withdrawn_at: string | null
-  reject_reason: string | null
-  created_at: string
-}
-
 export interface AuditLog {
   id: number
   actor_type: 'admin' | 'user' | 'system'
@@ -116,11 +94,3 @@ export interface AuditLog {
   created_at: string
 }
 
-export interface PaidLeaveSummary {
-  emp_id: string
-  name: string
-  paid_leave_total: number
-  paid_leave_used: number
-  approved_paid_days: number
-  remaining_days: number
-}

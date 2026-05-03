@@ -6,7 +6,7 @@
 
 import type {
   Employee, Attendance,
-  CorrectionRequest, LeaveRequest, Settings,
+  CorrectionRequest, Settings,
 } from '@/types/db'
 
 export const IS_DEMO =
@@ -37,7 +37,6 @@ export interface DemoDB {
   employees: Employee[]
   attendance: Attendance[]
   correction_requests: CorrectionRequest[]
-  leave_requests: LeaveRequest[]
   settings: Settings
   // セッション
   session: { type: 'user' | 'admin'; empId?: string; name: string } | null
@@ -51,7 +50,6 @@ export function getDemoDB(): DemoDB {
       employees: [...DEMO_EMPLOYEES],
       attendance: generateDemoAttendance(),
       correction_requests: [],
-      leave_requests: [],
       settings: { ...DEMO_SETTINGS },
       session: null,
     }

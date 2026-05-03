@@ -74,16 +74,14 @@ export default function AdminDashboardPage() {
     const wideStart = sinceIso < monthStart ? sinceIso : monthStart
     const wideEnd = today > monthEnd ? today : monthEnd
 
-    const [empRes, sRes, ccRes, lcRes] = await Promise.all([
+    const [empRes, sRes, ccRes] = await Promise.all([
       adminSelect<Employee[]>({ table: 'employees', filters: { status: 'active' } }),
       adminSelect<Settings>({ table: 'settings', filters: { id: 1 }, single: true }),
       adminSelect({ table: 'correction_requests', filters: { status: 'pending' }, count_only: true }),
-      adminSelect({ table: 'leave_requests', filters: { status: 'pending' }, count_only: true }),
     ])
     const emps: Employee[] = empRes.data || []
     const stngs: Settings | null = sRes.data
     const pendingC = ccRes.count || 0
-    const pendingL = lcRes.count || 0
 
     const active = emps.filter(e => e.status === 'active')
     const empIds = active.map(e => e.id)
@@ -99,7 +97,7 @@ export default function AdminDashboardPage() {
     }
     setEmployees(active)
     setSettings(stngs)
-    setPendingCount(pendingC + pendingL)
+    setPendingCount(pendingC)
 
     // emp_id ごとに record をインデックス
     const recByEmpDate = new Map<string, Attendance>()

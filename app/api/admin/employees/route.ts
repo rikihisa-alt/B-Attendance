@@ -13,8 +13,6 @@ interface CreateBody {
   birthday?: string | null
   dept?: string | null
   position?: string | null
-  paid_leave_total?: number
-  paid_leave_used?: number
 }
 
 function authEmail(empId: string): string {
@@ -85,8 +83,6 @@ export async function POST(request: Request) {
       dept: body.dept || null,
       position: body.position || null,
       status: 'active',
-      paid_leave_total: body.paid_leave_total ?? 10,
-      paid_leave_used: body.paid_leave_used ?? 0,
       first_login: true,
       password_hash: passwordHash,
     })

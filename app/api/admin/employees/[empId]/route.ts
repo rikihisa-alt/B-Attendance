@@ -13,8 +13,6 @@ interface UpdateBody {
   dept?: string | null
   position?: string | null
   status?: 'active' | 'inactive'
-  paid_leave_total?: number
-  paid_leave_used?: number
   reset_password?: string
 }
 
@@ -117,8 +115,6 @@ export async function PATCH(
     if (body.dept !== undefined) updates.dept = body.dept
     if (body.position !== undefined) updates.position = body.position
     if (body.status !== undefined) updates.status = body.status
-    if (body.paid_leave_total !== undefined) updates.paid_leave_total = body.paid_leave_total
-    if (body.paid_leave_used !== undefined) updates.paid_leave_used = body.paid_leave_used
 
     if (Object.keys(updates).length === 0) {
       // 通常項目に変更が無い場合（ID変更だけの場合など）も成功として返す

@@ -21,10 +21,8 @@ const ALLOWED_TABLES = new Set([
   'employees',
   'attendance',
   'correction_requests',
-  'leave_requests',
   'settings',
   'audit_log',
-  'v_paid_leave_summary',
 ])
 
 export async function POST(request: Request) {

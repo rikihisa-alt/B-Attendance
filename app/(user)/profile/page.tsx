@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { IS_DEMO, apiGetSession, apiGetEmployee, apiGetAttendance, apiGetCorrections, apiGetLeaves, apiUpdateEmployee, apiChangePassword, userSelect } from '@/lib/api'
+import { IS_DEMO, apiGetSession, apiGetEmployee, apiGetAttendance, apiGetCorrections, apiUpdateEmployee, apiChangePassword, userSelect } from '@/lib/api'
 import { calcDay } from '@/lib/attendance'
 import { formatMinutes, dowJa } from '@/lib/format'
 import { useCachedState, hasCached } from '@/lib/cache'
-import type { Employee, AttendanceEvent, LeaveRequest, Settings } from '@/types/db'
+import type { Employee, AttendanceEvent, Settings } from '@/types/db'
 
 const CK = 'user-profile:'
 
@@ -21,12 +21,6 @@ function formatJaDate(iso: string | null): string {
   if (!iso) return '-'
   const d = new Date(iso)
   return d.toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' })
-}
-
-function leaveDays(l: LeaveRequest): number {
-  const span = (new Date(l.to_date).getTime() - new Date(l.from_date).getTime()) / 86400000 + 1
-  const factor = (l.type === 'paid_am' || l.type === 'paid_pm') ? 0.5 : 1
-  return Math.max(0, span * factor)
 }
 
 export default function ProfilePage() {
@@ -48,7 +42,7 @@ export default function ProfilePage() {
   const [pwError, setPwError] = useState('')
 
   const [stats, setStats] = useCachedState(CK + 'stats', {
-    monthWorked: 0, monthOvertime: 0, paidLeaveRemaining: 0, pendingCount: 0,
+    monthWorked: 0, monthOvertime: 0, pendingCount: 0,
     monthLimit: 45, monthWarn: 36,
   })
 
@@ -83,29 +77,16 @@ export default function ProfilePage() {
 
     let employee: Employee | null = null
     let monthLimit = 45, monthWarn = 36
-    let approvedPaidDays = 0
     let pendingCorrections = 0
-    let pendingLeavesCount = 0
 
     if (IS_DEMO) {
       const empRes = await apiGetEmployee(currentEmpId)
       const empJson = await empRes.json()
       employee = empJson.data as Employee | null
 
-      const [corrRes, leaveRes] = await Promise.all([
-        apiGetCorrections(currentEmpId, 'pending'),
-        apiGetLeaves(currentEmpId, 'pending'),
-      ])
+      const corrRes = await apiGetCorrections(currentEmpId, 'pending')
       const corrJson = await corrRes.json()
-      const leaveJson = await leaveRes.json()
       pendingCorrections = corrJson.data?.length || 0
-      pendingLeavesCount = leaveJson.data?.length || 0
-
-      const allLeaveRes = await apiGetLeaves(currentEmpId, 'approved')
-      const allLeaveJson = await allLeaveRes.json()
-      ;(allLeaveJson.data || []).forEach((l: LeaveRequest) => {
-        if (l.type.startsWith('paid')) approvedPaidDays += leaveDays(l)
-      })
     } else {
       const { data: empData } = await userSelect<Employee>({
         table: 'employees', single: true,
@@ -128,22 +109,7 @@ export default function ProfilePage() {
         columns: 'id',
         filters: { status: 'pending' },
       })
-      const { data: pendingLvs } = await userSelect<{ id: string }[]>({
-        table: 'leave_requests',
-        columns: 'id',
-        filters: { status: 'pending' },
-      })
       pendingCorrections = pendingCorrs?.length || 0
-      pendingLeavesCount = pendingLvs?.length || 0
-
-      const { data: approvedLeaves } = await userSelect<LeaveRequest[]>({
-        table: 'leave_requests',
-        columns: 'type, from_date, to_date',
-        filters: { status: 'approved' },
-      })
-      ;(approvedLeaves || []).forEach(l => {
-        if (l.type.startsWith('paid')) approvedPaidDays += leaveDays(l)
-      })
     }
 
     if (employee) {
@@ -184,15 +150,10 @@ export default function ProfilePage() {
       })
     }
 
-    const remaining = employee
-      ? employee.paid_leave_total - employee.paid_leave_used - approvedPaidDays
-      : 0
-
     setStats({
       monthWorked: worked,
       monthOvertime: overtime,
-      paidLeaveRemaining: remaining,
-      pendingCount: pendingCorrections + pendingLeavesCount,
+      pendingCount: pendingCorrections,
       monthLimit, monthWarn,
     })
 
@@ -327,16 +288,6 @@ export default function ProfilePage() {
             <div className="stat-value">{otHours.toFixed(1)}<span className="stat-unit">h</span></div>
           </div>
         </div>
-        <div className="stat-card color-green">
-          <div className="stat-icon-box"><svg><use href="#i-calendar" /></svg></div>
-          <div className="stat-info">
-            <div className="stat-label-block">
-              <span className="stat-label-ja">有給残日数</span>
-              <span className="stat-label-en">PAID LEAVE</span>
-            </div>
-            <div className="stat-value">{stats.paidLeaveRemaining.toFixed(1)}<span className="stat-unit">日</span></div>
-          </div>
-        </div>
         <div className="stat-card color-orange">
           <div className="stat-icon-box"><svg><use href="#i-inbox" /></svg></div>
           <div className="stat-info">
@@ -368,7 +319,7 @@ export default function ProfilePage() {
           <ProfileInfoRow ja="登録日" en="JOINED" value={formatJaDate(emp.created_at)} />
           <ProfileInfoRow ja="最終パスワード変更" en="PW UPDATED" value={emp.pw_changed_at ? formatJaDate(emp.pw_changed_at) : '未変更'} />
           <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 12 }}>
-            ※ 所属・役職・社員ID・有給日数の変更は管理者にご相談ください
+            ※ 所属・役職・社員IDの変更は管理者にご相談ください
           </p>
         </div>
       </div>

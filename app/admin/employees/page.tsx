@@ -26,8 +26,6 @@ function EmployeesPageInner() {
   const [formBirthday, setFormBirthday] = useState('')
   const [formDept, setFormDept] = useState('')
   const [formPosition, setFormPosition] = useState('')
-  const [formPaidTotal, setFormPaidTotal] = useState(10)
-  const [formPaidUsed, setFormPaidUsed] = useState(0)
   const [formStatus, setFormStatus] = useState<'active' | 'inactive'>('active')
   const [formResetPw, setFormResetPw] = useState('')
   const [resetMsg, setResetMsg] = useState('')
@@ -61,8 +59,6 @@ function EmployeesPageInner() {
     setFormBirthday('')
     setFormDept('')
     setFormPosition('')
-    setFormPaidTotal(10)
-    setFormPaidUsed(0)
     setFormStatus('active')
     setFormResetPw('')
     setResetMsg('')
@@ -79,8 +75,6 @@ function EmployeesPageInner() {
     setFormBirthday(emp.birthday || '')
     setFormDept(emp.dept || '')
     setFormPosition(emp.position || '')
-    setFormPaidTotal(emp.paid_leave_total)
-    setFormPaidUsed(emp.paid_leave_used)
     setFormStatus(emp.status)
     setFormResetPw('')
     setResetMsg('')
@@ -111,8 +105,6 @@ function EmployeesPageInner() {
         birthday: formBirthday || null,
         dept: formDept.trim() || null,
         position: formPosition.trim() || null,
-        paid_leave_total: Number(formPaidTotal),
-        paid_leave_used: Number(formPaidUsed),
         status: formStatus,
       }
       if (newIdInput && newIdInput !== editingId) {
@@ -147,8 +139,6 @@ function EmployeesPageInner() {
         birthday: formBirthday || null,
         dept: formDept.trim() || null,
         position: formPosition.trim() || null,
-        paid_leave_total: Number(formPaidTotal),
-        paid_leave_used: Number(formPaidUsed),
       }
       const res = await fetch('/api/admin/employees', {
         method: 'POST',
@@ -381,31 +371,6 @@ function EmployeesPageInner() {
                   <input type="text" value={formPosition} onChange={e => setFormPosition(e.target.value)} placeholder="役職なしの場合は空欄" />
                 </div>
               </div>
-              <div className="row">
-                <div className="field">
-                  <label>
-                    <span className="lbl-ja">有給付与日数</span>
-                    <span className="lbl-en">PAID LEAVE TOTAL</span>
-                  </label>
-                  <input
-                    type="number" min={0} max={40}
-                    value={formPaidTotal}
-                    onChange={e => setFormPaidTotal(Number(e.target.value))}
-                  />
-                </div>
-                <div className="field">
-                  <label>
-                    <span className="lbl-ja">有給消化日数</span>
-                    <span className="lbl-en">PAID LEAVE USED</span>
-                  </label>
-                  <input
-                    type="number" min={0} step={0.5}
-                    value={formPaidUsed}
-                    onChange={e => setFormPaidUsed(Number(e.target.value))}
-                  />
-                </div>
-              </div>
-
               {editingId && (
                 <>
                   <div className="field">

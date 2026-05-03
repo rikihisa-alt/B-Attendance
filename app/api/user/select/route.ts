@@ -17,10 +17,10 @@ interface SelectBody {
 }
 
 // 自分の行だけが見えるテーブル
-const EMP_SCOPED = new Set(['attendance', 'leave_requests', 'correction_requests'])
+const EMP_SCOPED = new Set(['attendance', 'correction_requests'])
 // employees は自分の行のみ id=session.empId で参照可
 // settings は全社共通の設定なのでフィルタ無しで読み取り可
-const ALLOWED_TABLES = new Set(['attendance', 'leave_requests', 'correction_requests', 'employees', 'settings'])
+const ALLOWED_TABLES = new Set(['attendance', 'correction_requests', 'employees', 'settings'])
 
 export async function POST(request: Request) {
   const empId = await verifyUserSession()

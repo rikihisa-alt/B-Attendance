@@ -3,10 +3,6 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
-interface SidebarProps {
-  pendingCount?: number
-}
-
 interface NavItem {
   href: string
   iconId: string
@@ -15,14 +11,13 @@ interface NavItem {
   badge?: number
 }
 
-export default function Sidebar({ pendingCount }: SidebarProps) {
+export default function Sidebar() {
   const pathname = usePathname()
 
   const workItems: NavItem[] = [
     { href: '/home', iconId: 'i-clock', labelJa: '打刻', labelEn: 'CLOCK' },
     { href: '/history', iconId: 'i-list', labelJa: '勤怠履歴', labelEn: 'HISTORY' },
     { href: '/requests', iconId: 'i-edit', labelJa: '修正申請', labelEn: 'REQUESTS' },
-    { href: '/leaves', iconId: 'i-calendar', labelJa: '休暇申請', labelEn: 'LEAVES', badge: pendingCount },
   ]
   const accountItems: NavItem[] = [
     { href: '/profile', iconId: 'i-user', labelJa: 'マイページ', labelEn: 'MY PROFILE' },

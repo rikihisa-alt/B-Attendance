@@ -131,7 +131,6 @@ export default function AdminAuditPage() {
                 <option value="employees">employees</option>
                 <option value="attendance">attendance</option>
                 <option value="correction_requests">correction_requests</option>
-                <option value="leave_requests">leave_requests</option>
                 <option value="settings">settings</option>
               </select>
             </div>
