@@ -295,23 +295,23 @@ export default function AdminDashboardPage() {
             alerts.map((a, i) => (
               <div
                 key={i}
+                className="dashboard-alert"
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px',
-                  background: SEV_BG[a.severity], border: '1px solid var(--border)',
-                  borderLeft: `4px solid ${SEV_BORDER[a.severity]}`, borderRadius: 6, marginBottom: 8,
+                  background: SEV_BG[a.severity],
+                  borderLeft: `4px solid ${SEV_BORDER[a.severity]}`,
                 }}
               >
-                <svg className="icon-svg" style={{ color: SEV_BORDER[a.severity], flexShrink: 0 }}>
+                <svg className="icon-svg dashboard-alert-icon" style={{ color: SEV_BORDER[a.severity] }}>
                   <use href={`#${a.iconId}`} />
                 </svg>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                <div className="dashboard-alert-body">
+                  <div className="dashboard-alert-head">
                     <span className={`badge ${SEV_BADGE[a.severity]}`}>{SEV_LABEL[a.severity]}</span>
-                    <b style={{ fontSize: 13 }}>{a.title}</b>
+                    <b className="dashboard-alert-title">{a.title}</b>
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-soft)', lineHeight: 1.5 }}>{a.desc}</div>
+                  <div className="dashboard-alert-desc">{a.desc}</div>
                 </div>
-                <div style={{ flexShrink: 0 }}>
+                <div className="dashboard-alert-action">
                   <Link href={a.actionHref} className="btn btn-sm">{a.actionLabel}</Link>
                 </div>
               </div>

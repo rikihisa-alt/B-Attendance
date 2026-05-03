@@ -1402,17 +1402,212 @@ textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 
   margin-left: auto;
 }
 
+/* ============== ダッシュボードのアラート行 ============== */
+.dashboard-alert {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+.dashboard-alert-icon { flex-shrink: 0; }
+.dashboard-alert-body { flex: 1; min-width: 0; }
+.dashboard-alert-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+  flex-wrap: wrap;
+}
+.dashboard-alert-title { font-size: 13px; }
+.dashboard-alert-desc { font-size: 12px; color: var(--text-soft); line-height: 1.5; }
+.dashboard-alert-action { flex-shrink: 0; }
+
 @media (max-width: 768px) {
-  .login-container { max-width: 480px; }
+  .dashboard-alert { flex-wrap: wrap; gap: 10px; padding: 10px 12px; }
+  .dashboard-alert-body { flex: 1 1 100%; order: 2; }
+  .dashboard-alert-icon { order: 1; }
+  .dashboard-alert-action { order: 3; flex: 1 1 100%; }
+  .dashboard-alert-action .btn { width: 100%; }
+  .dashboard-alert-title { font-size: 12px; }
+}
+
+/* ============== タブレット〜スマホ (max-width: 768px) ============== */
+@media (max-width: 768px) {
+  /* ヘッダー: コンパクト化、時計とユーザー名は隠す */
+  .app-header { padding: 0 12px; height: 56px; }
+  .header-brand { gap: 8px; padding: 4px; margin-left: -4px; }
+  .header-logo-mark { width: 36px; height: 36px; }
+  .header-title { font-size: 15px; }
+  .header-title-sub { display: none; }
+  .header-clock, .header-user-info { display: none; }
+  .header-right { gap: 8px; }
+  .header-user { padding: 4px; gap: 0; }
+  .header-logout-btn { padding: 6px 10px; font-size: 11px; }
+
+  /* シェル: サイドバーは横スクロールのピルナビとして上部に */
+  .app-body { grid-template-columns: 1fr; }
+  .sidebar {
+    flex-direction: row;
+    position: sticky;
+    top: 56px;
+    height: auto;
+    padding: 6px 8px;
+    gap: 4px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    overflow-y: hidden;
+    z-index: 40;
+    -webkit-overflow-scrolling: touch;
+  }
+  .sidebar-section {
+    display: flex;
+    flex-direction: row;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+  .sidebar-section + .sidebar-section {
+    border-top: none;
+    margin-top: 0;
+    padding-top: 0;
+    border-left: 1px solid var(--border);
+    margin-left: 4px;
+    padding-left: 8px;
+  }
+  .nav-section-label { display: none; }
+  .nav-item {
+    flex-direction: column;
+    justify-content: center;
+    padding: 6px 10px;
+    border-left: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 8px 8px 0 0;
+    white-space: nowrap;
+    min-width: 64px;
+    font-size: 11px;
+    line-height: 1.1;
+  }
+  .nav-item.active {
+    border-left-color: transparent;
+    border-bottom-color: var(--primary);
+  }
+  .nav-item-content { gap: 4px; }
+  .nav-item-text { line-height: 1.1; }
+  .nav-item-text .ja { font-size: 11px; }
+  .nav-item-text .en { display: none; }
+  .nav-item.active .nav-item-text .ja { font-size: 11px; font-weight: 500; }
+  .sidebar-footer { display: none; }
+
+  /* メイン領域 */
+  .main { padding: 14px; max-width: 100%; }
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding-bottom: 10px;
+    margin-bottom: 14px;
+  }
+  .page-title { font-size: 18px; }
+  .page-title-en { font-size: 10px; }
+  .page-greeting { text-align: left; width: 100%; }
+  .greeting-text { font-size: 13px; }
+  .greeting-text .name { font-size: 14px; }
+  .greeting-meta { font-size: 10px; }
+
+  /* 統計カード: 2列に */
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .stat-card { padding: 10px 12px; gap: 8px; }
+  .stat-icon-box { width: 32px; height: 32px; border-radius: 8px; }
+  .stat-icon-box svg { width: 18px; height: 18px; }
+  .stat-value { font-size: 18px; }
+  .stat-label-ja { font-size: 10px; }
+  .stat-label-en { display: none; }
+
+  /* カード */
+  .card { border-radius: 8px; margin-bottom: 12px; }
+  .card-header { padding: 10px 14px; }
+  .card-title { font-size: 13px; }
+  .card-title-en { font-size: 9px; }
+  .card-body { padding: 14px; }
+
+  /* 打刻パネル: 縦積み、ボタンも見やすく */
+  .clock-grid { grid-template-columns: 1fr; }
+  .clock-display {
+    padding: 18px 18px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .clock-time { font-size: 44px; }
+  .clock-time .seconds { font-size: 22px; }
+  .clock-date { font-size: 12px; }
+  .clock-buttons { grid-template-columns: repeat(2, 1fr); }
+  .clock-btn {
+    padding: 14px 12px;
+    min-height: 96px;
+    gap: 4px 10px;
+  }
+  .clock-btn-icon-wrap { width: 40px; height: 40px; border-radius: 10px; }
+  .clock-btn-icon-wrap svg { width: 20px; height: 20px; }
+  .clock-btn-label-ja { font-size: 14px; }
+  .clock-btn-label-en { font-size: 9px; }
+  .clock-btn-time { font-size: 10px; }
+
+  /* テーブル: 横スクロールしやすく、文字も少し小さく */
+  .app-shell table { font-size: 12px; }
+  .app-shell th { padding: 8px 10px; font-size: 10px; }
+  .app-shell td { padding: 9px 10px; }
+  .cell-mono { font-size: 11px; }
+
+  /* ツールバー: 縦に積んで全幅 */
+  .toolbar { gap: 6px; }
+  .toolbar > * { flex: 1 1 100%; }
+  .toolbar .field { margin-bottom: 0; }
+  .toolbar .spacer { display: none; }
+  .toolbar input, .toolbar select { width: 100%; font-size: 14px; }
+
+  /* フォーム横並び解除 */
+  .row { grid-template-columns: 1fr; gap: 10px; }
+
+  /* プロフィールの行は既存のbreakpointで対応済み */
+
+  /* モーダル: 画面ほぼフルに、ヘッダーは小さく */
+  .modal-overlay { padding: 12px; align-items: flex-start; }
+  .modal { max-height: calc(100vh - 24px); border-radius: 10px; }
+  .modal-header { padding: 12px 14px; border-radius: 10px 10px 0 0; }
+  .modal-title { font-size: 14px; }
+  .modal-body { padding: 14px; }
+  .modal-footer { padding: 10px 14px; border-radius: 0 0 10px 10px; flex-wrap: wrap; gap: 6px; }
+  .modal-footer > * { flex: 1 1 calc(50% - 3px); min-width: 0; }
+  .modal-lg { max-width: 100%; }
+
+  /* ボタン: タップ領域確保 */
+  .btn { padding: 9px 14px; font-size: 13px; }
+  .btn-sm { padding: 7px 10px; font-size: 11px; }
+
+  /* iOS のオートズーム回避 (input は 16px 必須) */
+  input, select, textarea { font-size: 16px; }
+  .field input, .field select, .field textarea { font-size: 16px; }
+  .profile-row-value input, .profile-row-value select { font-size: 16px; }
+
+  /* ログイン画面 */
+  .login-screen { padding: 12px; align-items: flex-start; }
+  .login-container { max-width: 100%; border-radius: 12px; }
   .login-body { grid-template-columns: 1fr; }
   .login-side { display: none; }
-  .app-body { grid-template-columns: 1fr; }
-  .sidebar { position: relative; height: auto; top: 0; }
-  .clock-grid { grid-template-columns: 1fr; }
-  .clock-display { border-right: none; border-bottom: 1px solid var(--border); }
+  .login-header-bar { padding: 6px 12px; }
+  .login-time { display: none; }
+}
+
+/* ============== スマホ縦持ち (max-width: 480px) ============== */
+@media (max-width: 480px) {
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
-  .clock-time { font-size: 44px; }
-  .header-clock, .header-user-info { display: none; }
-  .main { padding: 16px; }
-  .page-greeting { display: none; }
+  .stat-value { font-size: 16px; }
+  .clock-time { font-size: 38px; }
+  .clock-time .seconds { font-size: 18px; }
+  .clock-btn-label-ja { font-size: 13px; }
+  .modal-overlay { padding: 6px; }
+  .modal { max-height: calc(100vh - 12px); }
 }
