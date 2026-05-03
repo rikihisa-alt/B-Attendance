@@ -28,7 +28,7 @@ export async function POST(request: Request) {
 
   try {
     const body = (await request.json()) as CreateBody
-    const empId = body.id?.trim().toUpperCase()
+    const empId = body.id?.trim()
     const password = body.password
     const name = body.name?.trim()
 

@@ -15,7 +15,7 @@ export async function POST(
   if (!(await verifyAdminSession())) {
     return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
   }
-  const empId = params.empId.toUpperCase()
+  const empId = params.empId
   const admin = supabaseAdmin()
   const fixed: string[] = []
 
