@@ -1,21 +1,51 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { IS_DEMO, apiLoginUser, apiLoginAdmin, apiChangePassword } from '@/lib/api'
 
 type Tab = 'user' | 'admin'
 
+const RECENT_EMP_IDS_KEY = 'b-attendance:recent-emp-ids'
+const RECENT_EMP_IDS_MAX = 10
+
 export default function LoginPage() {
   const router = useRouter()
-  const [tab, setTab] = useState<Tab>('admin')
+  const [tab, setTab] = useState<Tab>('user')
   const [clock, setClock] = useState('--:--:--')
 
   const [empId, setEmpId] = useState('')
   const [empPw, setEmpPw] = useState('')
   const [userError, setUserError] = useState('')
   const [userLoading, setUserLoading] = useState(false)
+  const [recentEmpIds, setRecentEmpIds] = useState<string[]>([])
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(RECENT_EMP_IDS_KEY)
+      if (raw) {
+        const arr = JSON.parse(raw)
+        if (Array.isArray(arr)) setRecentEmpIds(arr.filter(x => typeof x === 'string'))
+      }
+    } catch {
+      // localStorage 不可なら何もしない
+    }
+  }, [])
+
+  const rememberEmpId = useCallback((id: string) => {
+    const trimmed = id.trim()
+    if (!trimmed) return
+    setRecentEmpIds(prev => {
+      const next = [trimmed, ...prev.filter(x => x !== trimmed)].slice(0, RECENT_EMP_IDS_MAX)
+      try {
+        localStorage.setItem(RECENT_EMP_IDS_KEY, JSON.stringify(next))
+      } catch {
+        // ignore
+      }
+      return next
+    })
+  }, [])
 
   const [adminId, setAdminId] = useState('')
   const [adminPw, setAdminPw] = useState('')
@@ -60,6 +90,7 @@ export default function LoginPage() {
           setUserLoading(false)
           return
         }
+        rememberEmpId(empId)
         router.push('/home')
       } else {
         const inputId = empId.trim()
@@ -81,6 +112,7 @@ export default function LoginPage() {
           setUserLoading(false)
           return
         }
+        rememberEmpId(inputId)
         router.push('/home')
       }
     } catch {
@@ -137,6 +169,7 @@ export default function LoginPage() {
           return
         }
       }
+      rememberEmpId(currentEmpId)
       setShowFirstLogin(false)
       router.push('/home')
     } catch {
@@ -200,9 +233,17 @@ export default function LoginPage() {
                       value={empId}
                       onChange={e => setEmpId(e.target.value)}
                       placeholder="IDを入力"
-                      autoComplete="off"
+                      autoComplete="username"
+                      list="recent-emp-ids"
                       required
                     />
+                    {recentEmpIds.length > 0 && (
+                      <datalist id="recent-emp-ids">
+                        {recentEmpIds.map(id => (
+                          <option key={id} value={id} />
+                        ))}
+                      </datalist>
+                    )}
                   </div>
                   <div className="field">
                     <label>
