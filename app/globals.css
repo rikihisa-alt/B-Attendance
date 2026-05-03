@@ -1402,6 +1402,132 @@ textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 
   margin-left: auto;
 }
 
+/* ============== 打刻リスト編集（修正申請モーダル） ============== */
+.punch-list { display: flex; flex-direction: column; gap: 6px; }
+
+.punch-row {
+  display: grid;
+  grid-template-columns: 96px 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  background: var(--bg-soft);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  font-size: 13px;
+}
+.punch-row .badge {
+  min-width: 80px;
+  justify-content: center;
+  width: 100%;
+}
+.punch-row input[type="time"] {
+  padding: 6px 10px;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  width: 100%;
+}
+.punch-row-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.punch-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.punch-list-header-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-soft);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.punch-list-header-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .punch-row {
+    grid-template-columns: 90px 1fr auto;
+    gap: 6px;
+    padding: 6px 8px;
+  }
+  .punch-row-num { display: none; }
+  .punch-row .badge { min-width: 0; font-size: 10px; padding: 2px 6px; }
+  .punch-list-header { flex-direction: column; align-items: stretch; }
+  .punch-list-header-actions { flex-wrap: wrap; }
+  .punch-list-header-actions .btn { flex: 1 1 calc(50% - 3px); justify-content: center; }
+}
+
+/* ============== 修正申請一覧のカードリスト（モバイル用） ============== */
+.requests-cards { display: none; }
+
+.request-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: var(--card);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.request-card.is-withdrawn { opacity: 0.55; }
+
+.request-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+.request-card-date {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.request-card-date .target {
+  font-weight: 700;
+  font-size: 14px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.request-card-date .submitted {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+.request-card-section {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.request-card-section-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.request-card-section-value {
+  font-size: 13px;
+  word-break: break-word;
+}
+.request-card-section-value.cell-mono { font-size: 12px; }
+.request-card-actions { display: flex; justify-content: flex-end; }
+
 /* ============== 勤怠履歴のカードリスト（モバイル用） ============== */
 .history-cards { display: none; }
 
@@ -1631,6 +1757,10 @@ textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 
   /* 勤怠履歴: モバイルではテーブルではなくカードリストに切替 */
   .history-table-wrap { display: none; }
   .history-cards { display: block; }
+
+  /* 修正申請一覧: モバイルではカードリストに切替 */
+  .requests-table-wrap { display: none; }
+  .requests-cards { display: block; }
 
   /* ツールバー: 縦に積んで全幅 */
   .toolbar { gap: 6px; }

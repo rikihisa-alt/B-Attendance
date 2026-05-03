@@ -252,47 +252,90 @@ function RequestsPageInner() {
           </button>
         </div>
         <div className="card-body">
-          <div className="table-wrap">
-            {loading ? (
-              <div className="empty-state">読み込み中...</div>
-            ) : requests.length === 0 ? (
-              <div className="empty-state">
-                <svg className="icon-svg-lg empty-state-icon"><use href="#i-empty-mail" /></svg>
-                <div>申請はまだありません</div>
-              </div>
-            ) : (
-              <table>
-                <thead>
-                  <tr>
-                    <th>申請日時 / Submitted</th>
-                    <th>対象日 / Date</th>
-                    <th>修正内容 / Changes</th>
-                    <th>理由 / Reason</th>
-                    <th>状態 / Status</th>
-                    <th>操作 / Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {requests.map(r => (
-                    <tr key={r.id} style={r.status === 'withdrawn' ? { opacity: 0.55 } : undefined}>
-                      <td className="cell-mono">{new Date(r.submitted_at).toLocaleString('ja-JP')}</td>
-                      <td className="cell-mono">{r.date}</td>
-                      <td className="cell-mono">{formatRequestEvents(r.requested_events)}</td>
-                      <td>{r.reason}</td>
-                      <td>{statusBadge(r.status)}</td>
-                      <td>
-                        {r.status === 'pending' && (
-                          <button className="btn btn-danger btn-sm" onClick={() => handleWithdraw(r.id)}>
-                            <svg className="icon-svg-sm"><use href="#i-x" /></svg>取消
-                          </button>
-                        )}
-                      </td>
+          {loading ? (
+            <div className="empty-state">読み込み中...</div>
+          ) : requests.length === 0 ? (
+            <div className="empty-state">
+              <svg className="icon-svg-lg empty-state-icon"><use href="#i-empty-mail" /></svg>
+              <div>申請はまだありません</div>
+            </div>
+          ) : (
+            <>
+              {/* デスクトップ: テーブル */}
+              <div className="table-wrap requests-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>申請日時 / Submitted</th>
+                      <th>対象日 / Date</th>
+                      <th>修正内容 / Changes</th>
+                      <th>理由 / Reason</th>
+                      <th>状態 / Status</th>
+                      <th>操作 / Action</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+                  </thead>
+                  <tbody>
+                    {requests.map(r => (
+                      <tr key={r.id} style={r.status === 'withdrawn' ? { opacity: 0.55 } : undefined}>
+                        <td className="cell-mono">{new Date(r.submitted_at).toLocaleString('ja-JP')}</td>
+                        <td className="cell-mono">{r.date}</td>
+                        <td className="cell-mono">{formatRequestEvents(r.requested_events)}</td>
+                        <td>{r.reason}</td>
+                        <td>{statusBadge(r.status)}</td>
+                        <td>
+                          {r.status === 'pending' && (
+                            <button className="btn btn-danger btn-sm" onClick={() => handleWithdraw(r.id)}>
+                              <svg className="icon-svg-sm"><use href="#i-x" /></svg>取消
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* モバイル: カードリスト */}
+              <div className="requests-cards">
+                {requests.map(r => (
+                  <div key={r.id} className={`request-card${r.status === 'withdrawn' ? ' is-withdrawn' : ''}`}>
+                    <div className="request-card-head">
+                      <div className="request-card-date">
+                        <span className="target">{r.date}</span>
+                        <span className="submitted">申請: {new Date(r.submitted_at).toLocaleString('ja-JP')}</span>
+                      </div>
+                      {statusBadge(r.status)}
+                    </div>
+                    <div className="request-card-section">
+                      <span className="request-card-section-label">修正内容</span>
+                      <span className="request-card-section-value cell-mono">
+                        {formatRequestEvents(r.requested_events)}
+                      </span>
+                    </div>
+                    {r.reason && (
+                      <div className="request-card-section">
+                        <span className="request-card-section-label">理由</span>
+                        <span className="request-card-section-value">{r.reason}</span>
+                      </div>
+                    )}
+                    {r.reject_reason && (
+                      <div className="request-card-section">
+                        <span className="request-card-section-label">却下理由</span>
+                        <span className="request-card-section-value">{r.reject_reason}</span>
+                      </div>
+                    )}
+                    {r.status === 'pending' && (
+                      <div className="request-card-actions">
+                        <button className="btn btn-danger btn-sm" onClick={() => handleWithdraw(r.id)}>
+                          <svg className="icon-svg-sm"><use href="#i-x" /></svg>取消
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -319,15 +362,9 @@ function RequestsPageInner() {
                 />
               </div>
               <div style={{ marginBottom: 14 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <label style={{
-                    margin: 0, fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: 11, color: 'var(--text-soft)', letterSpacing: '0.08em',
-                    textTransform: 'uppercase', fontWeight: 700,
-                  }}>
-                    打刻リスト（時系列）/ PUNCH LIST
-                  </label>
-                  <div className="gap-8">
+                <div className="punch-list-header">
+                  <span className="punch-list-header-label">打刻リスト（時系列）/ PUNCH LIST</span>
+                  <div className="punch-list-header-actions">
                     <button type="button" className="btn btn-sm" onClick={() => handleAddPunch('in')}>
                       <svg className="icon-svg-sm"><use href="#i-plus" /></svg>出勤
                     </button>
@@ -356,11 +393,8 @@ function RequestsPageInner() {
                           value={p.time}
                           onChange={e => handleUpdatePunch(p.idx, e.target.value)}
                         />
-                        <span className="text-muted" style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>
-                          #{displayIdx + 1}
-                        </span>
-                        <span></span>
-                        <button type="button" className="btn btn-danger btn-sm" onClick={() => handleRemovePunch(p.idx)}>
+                        <span className="punch-row-num">#{displayIdx + 1}</span>
+                        <button type="button" className="btn btn-danger btn-sm" onClick={() => handleRemovePunch(p.idx)} aria-label="削除">
                           <svg className="icon-svg-sm"><use href="#i-trash" /></svg>
                         </button>
                       </div>
