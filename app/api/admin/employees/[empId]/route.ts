@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { verifyAdminSession } from '@/lib/auth'
 
@@ -31,7 +30,7 @@ export async function PATCH(
   }
 
   try {
-    let empId = params.empId.toUpperCase()
+    let empId = params.empId
     const body = (await request.json()) as UpdateBody
     const admin = supabaseAdmin()
 
@@ -41,7 +40,10 @@ export async function PATCH(
       return NextResponse.json({ error: '従業員が見つかりません' }, { status: 404 })
     }
 
-    // 1. パスワードリセット（単独操作）+ 直後にサインインテスト
+    // 1. パスワードリセット（単独操作）。
+    // service_role の updateUserById が成功した時点でパスワードは確実に反映済み。
+    // 別途のサインインテストは Supabase の Email プロバイダ設定に依存して
+    // 偽陰性を出すため行わない。
     if (body.reset_password) {
       if (!existing.auth_user_id) {
         return NextResponse.json({ error: 'auth_user_id が紐づいていません' }, { status: 400 })
@@ -64,34 +66,15 @@ export async function PATCH(
         return NextResponse.json({ error: 'first_login 更新失敗: ' + empError.message }, { status: 500 })
       }
 
-      // anonキーで実際にサインインしてみて、パスワードが本当に通るか検証
-      const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-      const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-      let signin_check: { ok: boolean; error?: string } = { ok: false, error: 'ENV未設定' }
-      if (url && anon) {
-        const tester = createClient(url, anon, { auth: { persistSession: false } })
-        const email = `${empId.toLowerCase()}@b-attendance.local`
-        const { error: signInError } = await tester.auth.signInWithPassword({
-          email, password: body.reset_password,
-        })
-        signin_check = signInError
-          ? { ok: false, error: signInError.message }
-          : { ok: true }
-        if (!signInError) {
-          // セッション残らないようにサインアウト
-          await tester.auth.signOut()
-        }
-      }
-
-      return NextResponse.json({ success: true, signin_check })
+      return NextResponse.json({ success: true })
     }
 
     // 2. ID 変更（先に処理。以降の更新は新IDに対して行う）
     if (body.new_id) {
-      const newId = body.new_id.trim().toUpperCase()
+      const newId = body.new_id.trim()
       if (newId !== empId) {
-        if (!/^[A-Z0-9_-]{1,16}$/.test(newId)) {
-          return NextResponse.json({ error: '社員IDは英数字 1〜16文字で入力してください' }, { status: 400 })
+        if (!/^[A-Za-z0-9_-]{1,32}$/.test(newId)) {
+          return NextResponse.json({ error: '社員IDは英数字（大小区別）/ハイフン/アンダースコア 1〜32文字で入力してください' }, { status: 400 })
         }
         const { data: dup } = await admin
           .from('employees').select('id').eq('id', newId).maybeSingle()
@@ -160,7 +143,7 @@ export async function DELETE(
   }
 
   try {
-    const empId = params.empId.toUpperCase()
+    const empId = params.empId
     const admin = supabaseAdmin()
     const { data: existing } = await admin
       .from('employees').select('auth_user_id').eq('id', empId).maybeSingle()

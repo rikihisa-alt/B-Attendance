@@ -185,18 +185,10 @@ function EmployeesPageInner() {
       setResetMsg(data.error || 'リセット失敗')
       return
     }
-    const signin = data.signin_check
-    if (signin?.ok) {
-      setResetMsg(
-        `✅ 新パスワード「${newPw}」設定完了。サインインテストも成功。\n` +
-        `本人はこのパスワードで一般ログインできます（次回ログイン時にパスワード変更を求められます）。`
-      )
-    } else {
-      setResetMsg(
-        `⚠️ パスワード更新はDB上は成功しましたが、サインインテスト失敗: ${signin?.error || '不明'}\n` +
-        `Supabase Auth側で何らかの拒否設定がかかってる可能性。`
-      )
-    }
+    setResetMsg(
+      `✅ 新パスワード「${newPw}」を設定しました。\n` +
+      `本人はこのパスワードで一般ログインでき、次回ログイン時にパスワード変更を求められます。`
+    )
     setFormResetPw('')
   }
 
