@@ -228,75 +228,145 @@ export default function HistoryPage() {
             </div>
           </div>
 
-          <div className="table-wrap">
-            {loading ? (
-              <div className="empty-state">読み込み中...</div>
-            ) : (
-              <table>
-                <thead>
-                  <tr>
-                    <th>日付 / Date</th>
-                    <th>曜 / Day</th>
-                    <th>出勤数 / Cnt</th>
-                    <th>初回出勤 / First In</th>
-                    <th>最終退勤 / Last Out</th>
-                    <th>休憩 / Break</th>
-                    <th>実働 / Worked</th>
-                    <th>状態 / Status</th>
-                    <th>操作 / Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {days.map(d => {
-                    const dKey = fmtDateKey(d)
-                    const rec = records[dKey]
-                    const calc = rec ? calcDay(rec.events as AttendanceEvent[]) : null
-                    const dow = d.getDay()
-                    const isFuture = d > today && dKey !== todayKey
+          {loading ? (
+            <div className="empty-state">読み込み中...</div>
+          ) : (
+            <>
+              {/* デスクトップ: テーブル */}
+              <div className="table-wrap history-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>日付 / Date</th>
+                      <th>曜 / Day</th>
+                      <th>出勤数 / Cnt</th>
+                      <th>初回出勤 / First In</th>
+                      <th>最終退勤 / Last Out</th>
+                      <th>休憩 / Break</th>
+                      <th>実働 / Worked</th>
+                      <th>状態 / Status</th>
+                      <th>操作 / Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {days.map(d => {
+                      const dKey = fmtDateKey(d)
+                      const rec = records[dKey]
+                      const calc = rec ? calcDay(rec.events as AttendanceEvent[]) : null
+                      const dow = d.getDay()
+                      const isFuture = d > today && dKey !== todayKey
 
-                    let statusBadge: React.ReactNode = null
-                    if (calc?.isWorking || calc?.isOnBreak) {
-                      statusBadge = <span className="badge badge-warning">勤務中</span>
-                    } else if (calc?.firstIn && calc.lastOut) {
-                      statusBadge = <span className="badge badge-success">完了</span>
-                    } else if (calc?.firstIn) {
-                      statusBadge = <span className="badge badge-warning">未退勤</span>
-                    } else if (!isFuture && dow !== 0 && dow !== 6) {
-                      statusBadge = <span className="badge badge-info">記録なし</span>
-                    }
+                      let statusBadge: React.ReactNode = null
+                      if (calc?.isWorking || calc?.isOnBreak) {
+                        statusBadge = <span className="badge badge-warning">勤務中</span>
+                      } else if (calc?.firstIn && calc.lastOut) {
+                        statusBadge = <span className="badge badge-success">完了</span>
+                      } else if (calc?.firstIn) {
+                        statusBadge = <span className="badge badge-warning">未退勤</span>
+                      } else if (!isFuture && dow !== 0 && dow !== 6) {
+                        statusBadge = <span className="badge badge-info">記録なし</span>
+                      }
 
-                    let inBadge: React.ReactNode = <span className="text-muted">-</span>
-                    if (calc?.inCount && calc.inCount > 1) {
-                      inBadge = <span className="badge badge-purple">{calc.inCount}回</span>
-                    } else if (calc?.inCount === 1) {
-                      inBadge = <span className="badge badge-info">1回</span>
-                    }
+                      let inBadge: React.ReactNode = <span className="text-muted">-</span>
+                      if (calc?.inCount && calc.inCount > 1) {
+                        inBadge = <span className="badge badge-purple">{calc.inCount}回</span>
+                      } else if (calc?.inCount === 1) {
+                        inBadge = <span className="badge badge-info">1回</span>
+                      }
 
-                    return (
-                      <tr key={dKey}>
-                        <td className="cell-mono">{dKey}</td>
-                        <td>{dowJa(d)}</td>
-                        <td>{inBadge}</td>
-                        <td className="cell-mono">{calc?.firstIn ? fmtTimeShort(calc.firstIn) : '-'}</td>
-                        <td className="cell-mono">{calc?.lastOut ? fmtTimeShort(calc.lastOut) : '-'}</td>
-                        <td className="cell-mono">{calc && calc.totalBreak ? `${calc.totalBreak}分` : '-'}</td>
-                        <td className="cell-mono">{calc && calc.totalWorked ? formatMinutes(calc.totalWorked) : '-'}</td>
-                        <td>{statusBadge}</td>
-                        <td>
-                          <div className="action-buttons">
-                            {calc && calc.eventCount > 0 && (
-                              <button className="btn btn-sm" onClick={() => setDetailDate(dKey)}>詳細</button>
-                            )}
-                            <button className="btn btn-sm" onClick={() => handleOpenCorrection(dKey)}>修正申請</button>
+                      return (
+                        <tr key={dKey}>
+                          <td className="cell-mono">{dKey}</td>
+                          <td>{dowJa(d)}</td>
+                          <td>{inBadge}</td>
+                          <td className="cell-mono">{calc?.firstIn ? fmtTimeShort(calc.firstIn) : '-'}</td>
+                          <td className="cell-mono">{calc?.lastOut ? fmtTimeShort(calc.lastOut) : '-'}</td>
+                          <td className="cell-mono">{calc && calc.totalBreak ? `${calc.totalBreak}分` : '-'}</td>
+                          <td className="cell-mono">{calc && calc.totalWorked ? formatMinutes(calc.totalWorked) : '-'}</td>
+                          <td>{statusBadge}</td>
+                          <td>
+                            <div className="action-buttons">
+                              {calc && calc.eventCount > 0 && (
+                                <button className="btn btn-sm" onClick={() => setDetailDate(dKey)}>詳細</button>
+                              )}
+                              <button className="btn btn-sm" onClick={() => handleOpenCorrection(dKey)}>修正申請</button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* モバイル: カードリスト */}
+              <div className="history-cards">
+                {days.map(d => {
+                  const dKey = fmtDateKey(d)
+                  const rec = records[dKey]
+                  const calc = rec ? calcDay(rec.events as AttendanceEvent[]) : null
+                  const dow = d.getDay()
+                  const isFuture = d > today && dKey !== todayKey
+
+                  let statusBadge: React.ReactNode = null
+                  if (calc?.isWorking || calc?.isOnBreak) {
+                    statusBadge = <span className="badge badge-warning">勤務中</span>
+                  } else if (calc?.firstIn && calc.lastOut) {
+                    statusBadge = <span className="badge badge-success">完了</span>
+                  } else if (calc?.firstIn) {
+                    statusBadge = <span className="badge badge-warning">未退勤</span>
+                  } else if (!isFuture && dow !== 0 && dow !== 6) {
+                    statusBadge = <span className="badge badge-info">記録なし</span>
+                  }
+
+                  const isWeekend = dow === 0 || dow === 6
+                  const isToday = dKey === todayKey
+
+                  return (
+                    <div key={dKey} className={`history-card${isWeekend ? ' is-weekend' : ''}${isToday ? ' is-today' : ''}`}>
+                      <div className="history-card-head">
+                        <div className="history-card-date">
+                          <span className="cell-mono">{dKey}</span>
+                          <span className="history-card-dow">({dowJa(d)})</span>
+                        </div>
+                        {statusBadge}
+                      </div>
+                      {calc && (calc.firstIn || calc.lastOut) ? (
+                        <>
+                          <div className="history-card-row">
+                            <span className="history-card-label">出勤</span>
+                            <span className="cell-mono">{calc.firstIn ? fmtTimeShort(calc.firstIn) : '-'}</span>
+                            <span className="history-card-label">退勤</span>
+                            <span className="cell-mono">{calc.lastOut ? fmtTimeShort(calc.lastOut) : '-'}</span>
                           </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
+                          <div className="history-card-row">
+                            <span className="history-card-label">実働</span>
+                            <span className="cell-mono">{calc.totalWorked ? formatMinutes(calc.totalWorked) : '-'}</span>
+                            <span className="history-card-label">休憩</span>
+                            <span className="cell-mono">{calc.totalBreak ? `${calc.totalBreak}分` : '-'}</span>
+                          </div>
+                          {calc.inCount > 1 && (
+                            <div className="history-card-row">
+                              <span className="history-card-label">出勤回数</span>
+                              <span className="badge badge-purple">{calc.inCount}回</span>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="history-card-empty">記録なし</div>
+                      )}
+                      <div className="history-card-actions">
+                        {calc && calc.eventCount > 0 && (
+                          <button className="btn btn-sm" onClick={() => setDetailDate(dKey)}>詳細</button>
+                        )}
+                        <button className="btn btn-sm" onClick={() => handleOpenCorrection(dKey)}>修正申請</button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
