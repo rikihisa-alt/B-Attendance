@@ -6,7 +6,10 @@ import { IS_DEMO, apiGetSession, apiGetAttendance } from '@/lib/api'
 import { createClient } from '@/lib/supabase/client'
 import { calcDay, sortedEvents } from '@/lib/attendance'
 import { fmtTimeShort, formatMinutes, dowJa } from '@/lib/format'
+import { useCachedState, getCached, setCached } from '@/lib/cache'
 import type { AttendanceEvent, Attendance, AttendanceEventType } from '@/types/db'
+
+const CK = 'user-history:'
 
 const TYPE_LABEL_JA: Record<AttendanceEventType, string> = {
   in: '出勤', break_start: '休憩開始', break_end: '休憩終了', out: '退勤',
@@ -50,14 +53,25 @@ function fmtDateKey(d: Date): string {
 export default function HistoryPage() {
   const router = useRouter()
   const [monthStr, setMonthStr] = useState(thisMonth)
-  const [records, setRecords] = useState<Record<string, Attendance>>({})
-  const [empId, setEmpId] = useState('')
-  const [userName, setUserName] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [records, setRecords] = useState<Record<string, Attendance>>(
+    () => getCached<Record<string, Attendance>>(`${CK}records:${thisMonth()}`) ?? {}
+  )
+  const [empId, setEmpId] = useCachedState<string>(CK + 'empId', '')
+  const [userName, setUserName] = useCachedState<string>(CK + 'userName', '')
+  const [loading, setLoading] = useState<boolean>(
+    () => !getCached<Record<string, Attendance>>(`${CK}records:${thisMonth()}`)
+  )
   const [detailDate, setDetailDate] = useState<string | null>(null)
 
   const fetchMonth = useCallback(async () => {
-    setLoading(true)
+    const cacheKey = `${CK}records:${monthStr}`
+    const cached = getCached<Record<string, Attendance>>(cacheKey)
+    if (cached) {
+      setRecords(cached)
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
     let currentEmpId = ''
     let name = ''
 
@@ -90,6 +104,7 @@ export default function HistoryPage() {
       const map: Record<string, Attendance> = {}
       data.data?.forEach((r: Attendance) => { map[r.date] = r })
       setRecords(map)
+      setCached(cacheKey, map)
     } else {
       const supabase = createClient()
       const { data } = await supabase
@@ -100,9 +115,10 @@ export default function HistoryPage() {
       const map: Record<string, Attendance> = {}
       data?.forEach(r => { map[r.date] = r as Attendance })
       setRecords(map)
+      setCached(cacheKey, map)
     }
     setLoading(false)
-  }, [monthStr])
+  }, [monthStr, setEmpId, setUserName])
 
   useEffect(() => { fetchMonth() }, [fetchMonth])
 

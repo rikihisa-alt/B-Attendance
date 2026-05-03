@@ -3,7 +3,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { adminSelect, adminApproveCorrection, adminRejectCorrection } from '@/lib/api'
 import { fmtTimeShort } from '@/lib/format'
+import { getCached, setCached } from '@/lib/cache'
 import type { CorrectionRequest, AttendanceEvent, AttendanceEventType, CorrectionRequestStatus } from '@/types/db'
+
+const CK = 'admin-corrections:'
 
 const TYPE_LABEL: Record<AttendanceEventType, string> = {
   in: '出勤', break_start: '休憩開始', break_end: '休憩終了', out: '退勤',
@@ -23,9 +26,13 @@ function formatRequestEvents(events: AttendanceEvent[]): string {
 }
 
 export default function AdminCorrectionsPage() {
-  const [requests, setRequests] = useState<CorrectionRequest[]>([])
-  const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<CorrectionRequestStatus | 'all'>('pending')
+  const [requests, setRequests] = useState<CorrectionRequest[]>(
+    () => getCached<CorrectionRequest[]>(`${CK}requests:pending`) ?? []
+  )
+  const [loading, setLoading] = useState<boolean>(
+    () => !getCached<CorrectionRequest[]>(`${CK}requests:pending`)
+  )
   const [rejectingId, setRejectingId] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -37,13 +44,22 @@ export default function AdminCorrectionsPage() {
   }
 
   const load = useCallback(async () => {
-    setLoading(true)
+    const cacheKey = `${CK}requests:${statusFilter}`
+    const cached = getCached<CorrectionRequest[]>(cacheKey)
+    if (cached) {
+      setRequests(cached)
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
     const { data } = await adminSelect<CorrectionRequest[]>({
       table: 'correction_requests',
       filters: statusFilter === 'all' ? undefined : { status: statusFilter },
       order: { column: 'submitted_at', ascending: false },
     })
-    setRequests(data || [])
+    const list = data || []
+    setRequests(list)
+    setCached(cacheKey, list)
     setLoading(false)
   }, [statusFilter])
 

@@ -551,8 +551,11 @@ body {
   background: var(--primary-pale);
   color: var(--primary);
   border-left-color: var(--primary);
-  font-weight: 700;
+  /* 選択/非選択で文字サイズ・太さは絶対に変えない（色とボーダーだけで区別） */
+  font-weight: 500;
+  font-size: 13px;
 }
+.nav-item.active .nav-item-text .ja { font-size: 13px; font-weight: 500; }
 
 .nav-item-content { display: flex; align-items: center; gap: 10px; }
 

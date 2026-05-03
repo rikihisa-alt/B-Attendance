@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { adminSelect, adminApproveLeave, adminRejectLeave } from '@/lib/api'
+import { getCached, setCached } from '@/lib/cache'
 import type { LeaveRequest, LeaveType, LeaveRequestStatus } from '@/types/db'
+
+const CK = 'admin-leaves:'
 
 const LEAVE_TYPE_LABEL: Record<LeaveType, string> = {
   paid: '有給休暇',
@@ -29,9 +32,13 @@ function statusBadge(status: string) {
 }
 
 export default function AdminLeavesPage() {
-  const [leaves, setLeaves] = useState<LeaveRequest[]>([])
-  const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<LeaveRequestStatus | 'all'>('pending')
+  const [leaves, setLeaves] = useState<LeaveRequest[]>(
+    () => getCached<LeaveRequest[]>(`${CK}leaves:pending`) ?? []
+  )
+  const [loading, setLoading] = useState<boolean>(
+    () => !getCached<LeaveRequest[]>(`${CK}leaves:pending`)
+  )
   const [rejectingId, setRejectingId] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -43,13 +50,22 @@ export default function AdminLeavesPage() {
   }
 
   const load = useCallback(async () => {
-    setLoading(true)
+    const cacheKey = `${CK}leaves:${statusFilter}`
+    const cached = getCached<LeaveRequest[]>(cacheKey)
+    if (cached) {
+      setLeaves(cached)
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
     const { data } = await adminSelect<LeaveRequest[]>({
       table: 'leave_requests',
       filters: statusFilter === 'all' ? undefined : { status: statusFilter },
       order: { column: 'submitted_at', ascending: false },
     })
-    setLeaves(data || [])
+    const list = data || []
+    setLeaves(list)
+    setCached(cacheKey, list)
     setLoading(false)
   }, [statusFilter])
 

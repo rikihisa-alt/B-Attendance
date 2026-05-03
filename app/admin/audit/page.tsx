@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { adminSelect } from '@/lib/api'
+import { getCached, setCached } from '@/lib/cache'
 import type { AuditLog } from '@/types/db'
+
+const CK = 'admin-audit:'
 
 const ACTION_LABEL: Record<string, string> = {
   insert: '作成', update: '更新', delete: '削除', login: 'ログイン',
@@ -10,15 +13,26 @@ const ACTION_LABEL: Record<string, string> = {
 }
 
 export default function AdminAuditPage() {
-  const [logs, setLogs] = useState<AuditLog[]>([])
-  const [loading, setLoading] = useState(true)
   const [filterFrom, setFilterFrom] = useState('')
   const [filterTo, setFilterTo] = useState('')
   const [filterAction, setFilterAction] = useState('')
   const [filterTarget, setFilterTarget] = useState('')
+  const [logs, setLogs] = useState<AuditLog[]>(
+    () => getCached<AuditLog[]>(CK + 'logs::::') ?? []
+  )
+  const [loading, setLoading] = useState<boolean>(
+    () => !getCached<AuditLog[]>(CK + 'logs::::')
+  )
 
   const load = useCallback(async () => {
-    setLoading(true)
+    const cacheKey = `${CK}logs:${filterFrom}:${filterTo}:${filterAction}:${filterTarget}`
+    const cached = getCached<AuditLog[]>(cacheKey)
+    if (cached) {
+      setLogs(cached)
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
     const filters: Record<string, string> = {}
     if (filterAction) filters.action = filterAction
     if (filterTarget) filters.target_type = filterTarget
@@ -30,7 +44,9 @@ export default function AdminAuditPage() {
       order: { column: 'created_at', ascending: false },
       limit: 500,
     })
-    setLogs(data || [])
+    const list = data || []
+    setLogs(list)
+    setCached(cacheKey, list)
     setLoading(false)
   }, [filterFrom, filterTo, filterAction, filterTarget])
 

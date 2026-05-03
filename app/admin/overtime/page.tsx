@@ -4,7 +4,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { adminSelect } from '@/lib/api'
 import { calcDay } from '@/lib/attendance'
 import { formatMinutes } from '@/lib/format'
+import { useCachedState, getCached, setCached } from '@/lib/cache'
 import type { Employee, Attendance, AttendanceEvent, Settings } from '@/types/db'
+
+const CK = 'admin-overtime:'
 
 interface Row {
   emp: Employee
@@ -31,12 +34,23 @@ function monthOptions(): { value: string; label: string }[] {
 
 export default function AdminOvertimePage() {
   const [monthStr, setMonthStr] = useState(thisMonth)
-  const [rows, setRows] = useState<Row[]>([])
-  const [settings, setSettings] = useState<Settings | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [rows, setRows] = useState<Row[]>(
+    () => getCached<Row[]>(`${CK}rows:${thisMonth()}`) ?? []
+  )
+  const [settings, setSettings] = useCachedState<Settings | null>(CK + 'settings', null)
+  const [loading, setLoading] = useState<boolean>(
+    () => !getCached<Row[]>(`${CK}rows:${thisMonth()}`)
+  )
 
   const load = useCallback(async () => {
-    setLoading(true)
+    const cacheKey = `${CK}rows:${monthStr}`
+    const cached = getCached<Row[]>(cacheKey)
+    if (cached) {
+      setRows(cached)
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
 
     const [y, m] = monthStr.split('-').map(Number)
     const startDate = `${y}-${String(m).padStart(2, '0')}-01`
@@ -90,8 +104,9 @@ export default function AdminOvertimePage() {
       return { emp, totalWorked, overtime, workDays }
     })
     setRows(list)
+    setCached(cacheKey, list)
     setLoading(false)
-  }, [monthStr])
+  }, [monthStr, setSettings])
 
   useEffect(() => { load() }, [load])
 

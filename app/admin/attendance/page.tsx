@@ -5,7 +5,10 @@ import { useSearchParams } from 'next/navigation'
 import { adminSelect, adminUpdateAdminNote } from '@/lib/api'
 import { calcDay, sortedEvents } from '@/lib/attendance'
 import { fmtTimeShort, formatMinutes, dowJa } from '@/lib/format'
+import { useCachedState, hasCached, getCached, setCached } from '@/lib/cache'
 import type { Employee, Attendance, AttendanceEvent, AttendanceEventType } from '@/types/db'
+
+const CK = 'admin-attendance:'
 
 const TYPE_LABEL: Record<AttendanceEventType, string> = {
   in: '出勤', break_start: '休憩開始', break_end: '休憩終了', out: '退勤',
@@ -23,14 +26,20 @@ function AttendancePageInner() {
   const searchParams = useSearchParams()
   const initialEmp = searchParams.get('emp') || ''
 
-  const [employees, setEmployees] = useState<Employee[]>([])
+  const [employees, setEmployees] = useCachedState<Employee[]>(CK + 'employees', [])
   const [selectedEmp, setSelectedEmp] = useState(initialEmp)
   const [monthStr, setMonthStr] = useState(() => {
     const d = new Date()
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
   })
-  const [rows, setRows] = useState<Row[]>([])
-  const [loading, setLoading] = useState(true)
+  const [rows, setRows] = useState<Row[]>(() => {
+    const k = `${CK}rows:${initialEmp}:${(() => {
+      const d = new Date()
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    })()}`
+    return getCached<Row[]>(k) ?? []
+  })
+  const [loading, setLoading] = useState<boolean>(() => !hasCached(CK + 'employees'))
   const [detail, setDetail] = useState<{ rec: Attendance | null; emp: Employee | null; date: string } | null>(null)
   const [adminNote, setAdminNote] = useState('')
   const [savingNote, setSavingNote] = useState(false)
@@ -60,7 +69,14 @@ function AttendancePageInner() {
       setLoading(false)
       return
     }
-    setLoading(true)
+    const cacheKey = `${CK}rows:${selectedEmp}:${monthStr}`
+    const cached = getCached<Row[]>(cacheKey)
+    if (cached) {
+      setRows(cached)
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
     const [y, m] = monthStr.split('-').map(Number)
     const startDate = `${y}-${String(m).padStart(2, '0')}-01`
     const lastDay = new Date(y, m, 0).getDate()
@@ -81,6 +97,7 @@ function AttendancePageInner() {
       list.push({ date: d, rec: recordMap[d] || null })
     }
     setRows(list)
+    setCached(cacheKey, list)
     setLoading(false)
   }, [selectedEmp, monthStr])
 

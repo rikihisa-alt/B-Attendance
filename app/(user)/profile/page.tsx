@@ -5,7 +5,10 @@ import { IS_DEMO, apiGetSession, apiGetEmployee, apiGetAttendance, apiGetCorrect
 import { createClient } from '@/lib/supabase/client'
 import { calcDay } from '@/lib/attendance'
 import { formatMinutes, dowJa } from '@/lib/format'
+import { useCachedState, hasCached } from '@/lib/cache'
 import type { Employee, AttendanceEvent, LeaveRequest } from '@/types/db'
+
+const CK = 'user-profile:'
 
 type CardKey = 'info' | 'edit' | 'pw'
 
@@ -28,9 +31,9 @@ function leaveDays(l: LeaveRequest): number {
 }
 
 export default function ProfilePage() {
-  const [emp, setEmp] = useState<Employee | null>(null)
-  const [empId, setEmpId] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [emp, setEmp] = useCachedState<Employee | null>(CK + 'emp', null)
+  const [empId, setEmpId] = useCachedState<string>(CK + 'empId', '')
+  const [loading, setLoading] = useState<boolean>(() => !hasCached(CK + 'emp'))
 
   const [openCards, setOpenCards] = useState<Record<CardKey, boolean>>({
     info: false, edit: false, pw: false,
@@ -45,7 +48,7 @@ export default function ProfilePage() {
   const [newPw2, setNewPw2] = useState('')
   const [pwError, setPwError] = useState('')
 
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useCachedState(CK + 'stats', {
     monthWorked: 0, monthOvertime: 0, paidLeaveRemaining: 0, pendingCount: 0,
     monthLimit: 45, monthWarn: 36,
   })
@@ -63,7 +66,7 @@ export default function ProfilePage() {
   }
 
   const fetchData = useCallback(async () => {
-    setLoading(true)
+    if (!hasCached(CK + 'emp')) setLoading(true)
     let currentEmpId = ''
 
     if (IS_DEMO) {
@@ -185,7 +188,7 @@ export default function ProfilePage() {
     })
 
     setLoading(false)
-  }, [])
+  }, [setEmp, setEmpId, setStats])
 
   useEffect(() => { fetchData() }, [fetchData])
 

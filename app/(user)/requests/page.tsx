@@ -6,7 +6,10 @@ import { IS_DEMO, apiGetSession, apiGetAttendance, apiGetCorrections, apiSubmitC
 import { createClient } from '@/lib/supabase/client'
 import { sortedEvents } from '@/lib/attendance'
 import { fmtTimeShort, dowJa } from '@/lib/format'
+import { useCachedState, hasCached } from '@/lib/cache'
 import type { CorrectionRequest, AttendanceEvent, AttendanceEventType } from '@/types/db'
+
+const CK = 'user-requests:'
 
 const TYPE_LABEL: Record<AttendanceEventType, string> = {
   in: '出勤', break_start: '休憩開始', break_end: '休憩終了', out: '退勤',
@@ -37,10 +40,10 @@ function RequestsPageInner() {
   const searchParams = useSearchParams()
   const initialDate = searchParams.get('date') || ''
 
-  const [empId, setEmpId] = useState('')
-  const [empName, setEmpName] = useState('')
-  const [requests, setRequests] = useState<CorrectionRequest[]>([])
-  const [loading, setLoading] = useState(true)
+  const [empId, setEmpId] = useCachedState<string>(CK + 'empId', '')
+  const [empName, setEmpName] = useCachedState<string>(CK + 'empName', '')
+  const [requests, setRequests] = useCachedState<CorrectionRequest[]>(CK + 'requests', [])
+  const [loading, setLoading] = useState<boolean>(() => !hasCached(CK + 'requests'))
   const [showModal, setShowModal] = useState(false)
   const [targetDate, setTargetDate] = useState('')
   const [punches, setPunches] = useState<PunchEntry[]>([])
@@ -65,7 +68,7 @@ function RequestsPageInner() {
         .eq('emp_id', currentEmpId).order('submitted_at', { ascending: false })
       setRequests((data || []) as CorrectionRequest[])
     }
-  }, [])
+  }, [setRequests])
 
   const openCorrectionForDate = useCallback(async (dateStr: string, currentEmpId: string) => {
     if (!currentEmpId) return
@@ -98,7 +101,7 @@ function RequestsPageInner() {
   }, [])
 
   const fetchInit = useCallback(async () => {
-    setLoading(true)
+    if (!hasCached(CK + 'requests')) setLoading(true)
     let currentEmpId = ''
     let name = ''
     if (IS_DEMO) {
@@ -122,7 +125,7 @@ function RequestsPageInner() {
     setLoading(false)
 
     if (initialDate) await openCorrectionForDate(initialDate, currentEmpId)
-  }, [loadRequests, initialDate, openCorrectionForDate])
+  }, [loadRequests, initialDate, openCorrectionForDate, setEmpId, setEmpName])
 
   useEffect(() => { fetchInit() }, [fetchInit])
 

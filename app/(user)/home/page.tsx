@@ -6,7 +6,10 @@ import { IS_DEMO, apiGetSession, apiGetAttendance, apiClock, apiCancelClock, api
 import { createClient } from '@/lib/supabase/client'
 import { calcDay, getAvailableActions, liveEvents, sortedEvents } from '@/lib/attendance'
 import { fmtTimeShort, formatMinutes } from '@/lib/format'
+import { useCachedState, hasCached } from '@/lib/cache'
 import type { AttendanceEvent, AttendanceEventType } from '@/types/db'
+
+const CK = 'user-home:'
 
 const TYPE_LABEL_JA: Record<AttendanceEventType, string> = {
   in: '出勤',
@@ -56,10 +59,10 @@ function fmtIsoDateLabel(d: Date) {
 
 export default function HomePage() {
   const router = useRouter()
-  const [events, setEvents] = useState<AttendanceEvent[]>([])
-  const [empId, setEmpId] = useState('')
-  const [userName, setUserName] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [events, setEvents] = useCachedState<AttendanceEvent[]>(CK + 'events', [])
+  const [empId, setEmpId] = useCachedState<string>(CK + 'empId', '')
+  const [userName, setUserName] = useCachedState<string>(CK + 'userName', '')
+  const [loading, setLoading] = useState<boolean>(() => !hasCached(CK + 'events'))
   const [now, setNow] = useState(new Date())
 
   useEffect(() => {

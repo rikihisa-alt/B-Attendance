@@ -4,7 +4,10 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { IS_DEMO, apiGetSession, apiGetEmployee, apiGetLeaves, apiSubmitLeave, apiWithdrawLeave } from '@/lib/api'
 import { createClient } from '@/lib/supabase/client'
 import { dowJa } from '@/lib/format'
+import { useCachedState, hasCached } from '@/lib/cache'
 import type { Employee, LeaveRequest, LeaveType } from '@/types/db'
+
+const CK = 'user-leaves:'
 
 const LEAVE_TYPE_LABEL: Record<LeaveType, string> = {
   paid: '有給休暇',
@@ -36,10 +39,10 @@ function todayStr(): string {
 }
 
 export default function LeavesPage() {
-  const [empId, setEmpId] = useState('')
-  const [emp, setEmp] = useState<Employee | null>(null)
-  const [leaves, setLeaves] = useState<LeaveRequest[]>([])
-  const [loading, setLoading] = useState(true)
+  const [empId, setEmpId] = useCachedState<string>(CK + 'empId', '')
+  const [emp, setEmp] = useCachedState<Employee | null>(CK + 'emp', null)
+  const [leaves, setLeaves] = useCachedState<LeaveRequest[]>(CK + 'leaves', [])
+  const [loading, setLoading] = useState<boolean>(() => !hasCached(CK + 'leaves'))
 
   const [showModal, setShowModal] = useState(false)
   const [formType, setFormType] = useState<LeaveType>('paid')
@@ -55,7 +58,7 @@ export default function LeavesPage() {
   }
 
   const loadAll = useCallback(async () => {
-    setLoading(true)
+    if (!hasCached(CK + 'leaves')) setLoading(true)
     let currentEmpId = ''
     if (IS_DEMO) {
       const sessRes = await apiGetSession()
@@ -90,7 +93,7 @@ export default function LeavesPage() {
       setLeaves((leavesData || []) as LeaveRequest[])
     }
     setLoading(false)
-  }, [])
+  }, [setEmpId, setEmp, setLeaves])
 
   useEffect(() => { loadAll() }, [loadAll])
 

@@ -3,14 +3,17 @@
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { adminSelect } from '@/lib/api'
+import { useCachedState, hasCached } from '@/lib/cache'
 import type { Employee } from '@/types/db'
+
+const CK = 'admin-employees:'
 
 function EmployeesPageInner() {
   const searchParams = useSearchParams()
   const editId = searchParams.get('id')
 
-  const [employees, setEmployees] = useState<Employee[]>([])
-  const [loading, setLoading] = useState(true)
+  const [employees, setEmployees] = useCachedState<Employee[]>(CK + 'all', [])
+  const [loading, setLoading] = useState<boolean>(() => !hasCached(CK + 'all'))
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('active')
 
   const [showModal, setShowModal] = useState(false)
@@ -38,14 +41,14 @@ function EmployeesPageInner() {
   }
 
   const load = useCallback(async () => {
-    setLoading(true)
+    if (!hasCached(CK + 'all')) setLoading(true)
     const { data } = await adminSelect<Employee[]>({
       table: 'employees',
       order: { column: 'id' },
     })
     setEmployees(data || [])
     setLoading(false)
-  }, [])
+  }, [setEmployees])
 
   useEffect(() => { load() }, [load])
 
@@ -101,7 +104,7 @@ function EmployeesPageInner() {
     }
     setSubmitting(true)
     if (editingId) {
-      const newIdInput = formId.trim().toUpperCase()
+      const newIdInput = formId.trim()
       const updates: Record<string, unknown> = {
         name: formName.trim(),
         kana: formKana.trim() || null,
@@ -137,7 +140,7 @@ function EmployeesPageInner() {
       showToast('従業員情報を更新しました', 'success')
     } else {
       const empPayload = {
-        id: formId.trim().toUpperCase(),
+        id: formId.trim(),
         password: formPw,
         name: formName.trim(),
         kana: formKana.trim() || null,

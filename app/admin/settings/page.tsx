@@ -2,23 +2,27 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { adminSelect } from '@/lib/api'
+import { useCachedState, hasCached, getCached } from '@/lib/cache'
 import type { Settings } from '@/types/db'
 
-export default function AdminSettingsPage() {
-  const [settings, setSettings] = useState<Settings | null>(null)
-  const [loading, setLoading] = useState(true)
+const CK = 'admin-settings:'
 
-  const [companyName, setCompanyName] = useState('')
-  const [workHours, setWorkHours] = useState(8)
-  const [workDays, setWorkDays] = useState(20)
-  const [startTime, setStartTime] = useState('09:00')
-  const [endTime, setEndTime] = useState('18:00')
-  const [monthLimit, setMonthLimit] = useState(45)
-  const [yearLimit, setYearLimit] = useState(360)
-  const [monthWarn, setMonthWarn] = useState(36)
+export default function AdminSettingsPage() {
+  const [settings, setSettings] = useCachedState<Settings | null>(CK + 'settings', null)
+  const [loading, setLoading] = useState<boolean>(() => !hasCached(CK + 'settings'))
+
+  const cachedS = getCached<Settings>(CK + 'settings')
+  const [companyName, setCompanyName] = useState(cachedS?.company_name || '')
+  const [workHours, setWorkHours] = useState<number>(cachedS?.standard_work_hours ?? 8)
+  const [workDays, setWorkDays] = useState<number>(cachedS?.standard_work_days ?? 20)
+  const [startTime, setStartTime] = useState(cachedS?.work_start_time || '09:00')
+  const [endTime, setEndTime] = useState(cachedS?.work_end_time || '18:00')
+  const [monthLimit, setMonthLimit] = useState<number>(cachedS?.monthly_overtime_limit ?? 45)
+  const [yearLimit, setYearLimit] = useState<number>(cachedS?.yearly_overtime_limit ?? 360)
+  const [monthWarn, setMonthWarn] = useState<number>(cachedS?.monthly_overtime_warning ?? 36)
   const [saving, setSaving] = useState(false)
 
-  const [adminIdInput, setAdminIdInput] = useState('')
+  const [adminIdInput, setAdminIdInput] = useState(cachedS?.admin_id || '')
   const [currentPw, setCurrentPw] = useState('')
   const [newPw1, setNewPw1] = useState('')
   const [newPw2, setNewPw2] = useState('')
@@ -32,7 +36,7 @@ export default function AdminSettingsPage() {
   }
 
   const load = useCallback(async () => {
-    setLoading(true)
+    if (!hasCached(CK + 'settings')) setLoading(true)
     const { data: s } = await adminSelect<Settings>({
       table: 'settings', filters: { id: 1 }, single: true,
     })
@@ -49,7 +53,7 @@ export default function AdminSettingsPage() {
       setAdminIdInput(s.admin_id || '')
     }
     setLoading(false)
-  }, [])
+  }, [setSettings])
 
   useEffect(() => { load() }, [load])
 

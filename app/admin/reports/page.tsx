@@ -4,7 +4,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { adminSelect } from '@/lib/api'
 import { calcDay, sortedEvents } from '@/lib/attendance'
 import { fmtTimeShort, formatMinutes, dowJa } from '@/lib/format'
+import { useCachedState } from '@/lib/cache'
 import type { Employee, Attendance, AttendanceEvent, Settings } from '@/types/db'
+
+const CK = 'admin-reports:'
 
 type ReportKind = 'summary' | 'events' | 'overtime'
 
@@ -38,8 +41,8 @@ function downloadCsv(filename: string, rows: (string | number)[][]) {
 }
 
 export default function AdminReportsPage() {
-  const [employees, setEmployees] = useState<Employee[]>([])
-  const [settings, setSettings] = useState<Settings | null>(null)
+  const [employees, setEmployees] = useCachedState<Employee[]>(CK + 'employees', [])
+  const [settings, setSettings] = useCachedState<Settings | null>(CK + 'settings', null)
   const [monthStr, setMonthStr] = useState(thisMonth)
   const [empFilter, setEmpFilter] = useState('all')
   const [generating, setGenerating] = useState(false)
@@ -57,7 +60,7 @@ export default function AdminReportsPage() {
     ])
     setEmployees(empRes.data || [])
     setSettings(sRes.data)
-  }, [])
+  }, [setEmployees, setSettings])
 
   useEffect(() => { load() }, [load])
 

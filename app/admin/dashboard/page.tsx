@@ -5,7 +5,10 @@ import Link from 'next/link'
 import { adminSelect } from '@/lib/api'
 import { calcDay } from '@/lib/attendance'
 import { dowJa, fmtTimeShort } from '@/lib/format'
+import { useCachedState, hasCached } from '@/lib/cache'
 import type { Employee, Attendance, AttendanceEvent, Settings } from '@/types/db'
+
+const CK = 'admin-dashboard:'
 
 type Severity = 'danger' | 'warning' | 'info'
 
@@ -45,15 +48,15 @@ interface TodayRow {
 }
 
 export default function AdminDashboardPage() {
-  const [loading, setLoading] = useState(true)
-  const [employees, setEmployees] = useState<Employee[]>([])
-  const [todayRows, setTodayRows] = useState<TodayRow[]>([])
-  const [pendingCount, setPendingCount] = useState(0)
-  const [alerts, setAlerts] = useState<Alert[]>([])
-  const [settings, setSettings] = useState<Settings | null>(null)
+  const [employees, setEmployees] = useCachedState<Employee[]>(CK + 'employees', [])
+  const [todayRows, setTodayRows] = useCachedState<TodayRow[]>(CK + 'todayRows', [])
+  const [pendingCount, setPendingCount] = useCachedState<number>(CK + 'pendingCount', 0)
+  const [alerts, setAlerts] = useCachedState<Alert[]>(CK + 'alerts', [])
+  const [settings, setSettings] = useCachedState<Settings | null>(CK + 'settings', null)
+  const [loading, setLoading] = useState<boolean>(() => !hasCached(CK + 'employees'))
 
   const load = useCallback(async () => {
-    setLoading(true)
+    if (!hasCached(CK + 'employees')) setLoading(true)
 
     // 並列で集約クエリを発行: 従業員一覧 / 設定 / 承認待ちカウント / 直近7日の全勤怠
     const today = todayIso()
