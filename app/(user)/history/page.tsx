@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { IS_DEMO, apiGetSession, apiGetAttendance } from '@/lib/api'
-import { createClient } from '@/lib/supabase/client'
+import { IS_DEMO, apiGetSession, apiGetAttendance, userSelect } from '@/lib/api'
 import { calcDay, sortedEvents } from '@/lib/attendance'
 import { fmtTimeShort, formatMinutes, dowJa } from '@/lib/format'
 import { useCachedState, getCached, setCached } from '@/lib/cache'
@@ -82,13 +81,11 @@ export default function HistoryPage() {
       currentEmpId = sessData.session.empId
       name = sessData.session.name || ''
     } else {
-      const supabase = createClient()
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-      currentEmpId = session.user.app_metadata?.emp_id
-      const { data: emp } = await supabase
-        .from('employees').select('name').eq('id', currentEmpId).single()
-      name = emp?.name || ''
+      const meRes = await fetch('/api/auth/me', { cache: 'no-store' })
+      const meData = await meRes.json()
+      if (!meData.session) return
+      currentEmpId = meData.session.empId
+      name = meData.session.name || ''
     }
     setEmpId(currentEmpId)
     setUserName(name)
@@ -106,14 +103,14 @@ export default function HistoryPage() {
       setRecords(map)
       setCached(cacheKey, map)
     } else {
-      const supabase = createClient()
-      const { data } = await supabase
-        .from('attendance').select('*')
-        .eq('emp_id', currentEmpId)
-        .gte('date', startDate).lte('date', endDate)
-        .order('date')
+      const { data } = await userSelect<Attendance[]>({
+        table: 'attendance',
+        gte: { column: 'date', value: startDate },
+        lte: { column: 'date', value: endDate },
+        order: { column: 'date' },
+      })
       const map: Record<string, Attendance> = {}
-      data?.forEach(r => { map[r.date] = r as Attendance })
+      ;(data || []).forEach(r => { map[r.date] = r })
       setRecords(map)
       setCached(cacheKey, map)
     }

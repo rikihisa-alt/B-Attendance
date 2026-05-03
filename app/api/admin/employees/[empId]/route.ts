@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import bcrypt from 'bcryptjs'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { verifyAdminSession } from '@/lib/auth'
 
@@ -41,29 +42,29 @@ export async function PATCH(
     }
 
     // 1. パスワードリセット（単独操作）。
-    // service_role の updateUserById が成功した時点でパスワードは確実に反映済み。
-    // 別途のサインインテストは Supabase の Email プロバイダ設定に依存して
-    // 偽陰性を出すため行わない。
+    // employees.password_hash を bcrypt で更新するのが正本。Supabase Auth の
+    // updateUserById は補助（旧フローとの互換 / 将来の有効化に備える）として
+    // 試みるが、エラーになっても employees 側が更新できていれば成功扱い。
     if (body.reset_password) {
-      if (!existing.auth_user_id) {
-        return NextResponse.json({ error: 'auth_user_id が紐づいていません' }, { status: 400 })
-      }
       if (body.reset_password.length < 4) {
         return NextResponse.json({ error: '新パスワードは4文字以上で入力してください' }, { status: 400 })
       }
-      const { error: pwError } = await admin.auth.admin.updateUserById(existing.auth_user_id, {
-        password: body.reset_password,
-      })
-      if (pwError) {
-        return NextResponse.json({ error: 'パスワードリセット失敗: ' + pwError.message }, { status: 500 })
-      }
+      const passwordHash = await bcrypt.hash(body.reset_password, 10)
       const { error: empError } = await admin
         .from('employees').update({
           first_login: true,
           pw_reset_at: new Date().toISOString(),
+          password_hash: passwordHash,
         }).eq('id', empId)
       if (empError) {
-        return NextResponse.json({ error: 'first_login 更新失敗: ' + empError.message }, { status: 500 })
+        return NextResponse.json({ error: 'パスワードリセット失敗: ' + empError.message }, { status: 500 })
+      }
+
+      // 旧 Supabase Auth ユーザーがあればそちらも合わせて更新（best-effort）
+      if (existing.auth_user_id) {
+        await admin.auth.admin.updateUserById(existing.auth_user_id, {
+          password: body.reset_password,
+        }).catch(() => null)
       }
 
       return NextResponse.json({ success: true })

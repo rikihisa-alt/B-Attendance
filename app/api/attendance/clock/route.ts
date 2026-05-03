@@ -1,19 +1,15 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase/admin'
+import { verifyUserSession } from '@/lib/auth'
 import type { AttendanceEvent, AttendanceEventType } from '@/types/db'
+
+export const runtime = 'nodejs'
 
 export async function POST(request: Request) {
   try {
-    const supabase = createClient()
-    const { data: { session } } = await supabase.auth.getSession()
-
-    if (!session) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
-    }
-
-    const empId = session.user.app_metadata?.emp_id
+    const empId = await verifyUserSession()
     if (!empId) {
-      return NextResponse.json({ error: '社員情報が見つかりません' }, { status: 400 })
+      return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
     }
 
     const { type } = await request.json() as { type: AttendanceEventType }
@@ -22,16 +18,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '無効な打刻タイプです' }, { status: 400 })
     }
 
+    const supabase = supabaseAdmin()
     const now = new Date()
     const dateStr = now.toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' })
 
-    // 既存レコードを取得
     const { data: existing } = await supabase
       .from('attendance')
       .select('id, events')
       .eq('emp_id', empId)
       .eq('date', dateStr)
-      .single()
+      .maybeSingle()
 
     const newEvent: AttendanceEvent = {
       type,

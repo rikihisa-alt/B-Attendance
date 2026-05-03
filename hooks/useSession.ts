@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { IS_DEMO, apiGetSession, apiGetEmployee } from '@/lib/api'
-import { createClient } from '@/lib/supabase/client'
+import { IS_DEMO, apiGetSession } from '@/lib/api'
 
 interface SessionInfo {
   empId: string
@@ -39,18 +38,12 @@ export function useSession(): SessionInfo {
           setInfo(prev => ({ ...prev, loading: false }))
         }
       } else {
-        const supabase = createClient()
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session) {
-          const empId = session.user.app_metadata?.emp_id || ''
-          const { data: emp } = await supabase
-            .from('employees')
-            .select('name')
-            .eq('id', empId)
-            .single()
+        const res = await fetch('/api/auth/me', { cache: 'no-store' })
+        const data = await res.json()
+        if (data.session) {
           setInfo({
-            empId,
-            userName: emp?.name || empId,
+            empId: data.session.empId,
+            userName: data.session.name || data.session.empId,
             role: 'user',
             loading: false,
           })

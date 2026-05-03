@@ -2,12 +2,11 @@
 
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { IS_DEMO, apiGetSession, apiGetAttendance, apiGetCorrections, apiSubmitCorrection, apiWithdrawCorrection } from '@/lib/api'
-import { createClient } from '@/lib/supabase/client'
+import { IS_DEMO, apiGetSession, apiGetAttendance, apiGetCorrections, apiSubmitCorrection, apiWithdrawCorrection, userSelect } from '@/lib/api'
 import { sortedEvents } from '@/lib/attendance'
 import { fmtTimeShort, dowJa } from '@/lib/format'
 import { useCachedState, hasCached } from '@/lib/cache'
-import type { CorrectionRequest, AttendanceEvent, AttendanceEventType } from '@/types/db'
+import type { CorrectionRequest, AttendanceEvent, AttendanceEventType, Attendance } from '@/types/db'
 
 const CK = 'user-requests:'
 
@@ -62,11 +61,11 @@ function RequestsPageInner() {
       const data = await res.json()
       setRequests((data.data || []) as CorrectionRequest[])
     } else {
-      const supabase = createClient()
-      const { data } = await supabase
-        .from('correction_requests').select('*')
-        .eq('emp_id', currentEmpId).order('submitted_at', { ascending: false })
-      setRequests((data || []) as CorrectionRequest[])
+      const { data } = await userSelect<CorrectionRequest[]>({
+        table: 'correction_requests',
+        order: { column: 'submitted_at', ascending: false },
+      })
+      setRequests(data || [])
     }
   }, [setRequests])
 
@@ -81,10 +80,12 @@ function RequestsPageInner() {
       const data = await res.json()
       events = data.data?.[0]?.events || []
     } else {
-      const supabase = createClient()
-      const { data } = await supabase
-        .from('attendance').select('events')
-        .eq('emp_id', currentEmpId).eq('date', dateStr).maybeSingle()
+      const { data } = await userSelect<Attendance>({
+        table: 'attendance',
+        columns: 'events',
+        filters: { date: dateStr },
+        single: true,
+      })
       events = (data?.events as AttendanceEvent[]) || []
     }
 
@@ -111,13 +112,11 @@ function RequestsPageInner() {
       currentEmpId = sessData.session.empId
       name = sessData.session.name || ''
     } else {
-      const supabase = createClient()
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-      currentEmpId = session.user.app_metadata?.emp_id
-      const { data: emp } = await supabase
-        .from('employees').select('name').eq('id', currentEmpId).single()
-      name = emp?.name || ''
+      const meRes = await fetch('/api/auth/me', { cache: 'no-store' })
+      const meData = await meRes.json()
+      if (!meData.session) return
+      currentEmpId = meData.session.empId
+      name = meData.session.name || ''
     }
     setEmpId(currentEmpId)
     setEmpName(name)
@@ -169,18 +168,18 @@ function RequestsPageInner() {
         return
       }
     } else {
-      const supabase = createClient()
-      const { error } = await supabase.from('correction_requests').insert({
-        emp_id: empId,
-        emp_name: empName,
-        date: targetDate,
-        requested_events: requestedEvents,
-        reason: trimmedReason,
-        status: 'pending',
-        submitted_at: new Date().toISOString(),
+      const res = await fetch('/api/user/corrections', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: targetDate,
+          requested_events: requestedEvents,
+          reason: trimmedReason,
+        }),
       })
-      if (error) {
-        showToast('申請に失敗しました: ' + error.message, 'error')
+      const data = await res.json()
+      if (!res.ok) {
+        showToast('申請に失敗しました: ' + (data.error || '不明'), 'error')
         setSubmitting(false)
         return
       }
@@ -196,11 +195,16 @@ function RequestsPageInner() {
     if (IS_DEMO) {
       await apiWithdrawCorrection(id)
     } else {
-      const supabase = createClient()
-      await supabase.from('correction_requests').update({
-        status: 'withdrawn',
-        withdrawn_at: new Date().toISOString(),
-      }).eq('id', id)
+      const res = await fetch(`/api/user/corrections/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'withdraw' }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        showToast('取り消し失敗: ' + (data.error || '不明'), 'error')
+        return
+      }
     }
     showToast('申請を取り消しました', 'info')
     await loadRequests(empId)

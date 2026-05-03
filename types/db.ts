@@ -32,6 +32,7 @@ export interface Employee {
   first_login: boolean
   pw_changed_at: string | null
   pw_reset_at: string | null
+  password_hash: string | null
   created_at: string
   updated_at: string
 }

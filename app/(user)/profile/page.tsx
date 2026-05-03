@@ -1,12 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { IS_DEMO, apiGetSession, apiGetEmployee, apiGetAttendance, apiGetCorrections, apiGetLeaves, apiUpdateEmployee, apiChangePassword } from '@/lib/api'
-import { createClient } from '@/lib/supabase/client'
+import { IS_DEMO, apiGetSession, apiGetEmployee, apiGetAttendance, apiGetCorrections, apiGetLeaves, apiUpdateEmployee, apiChangePassword, userSelect } from '@/lib/api'
 import { calcDay } from '@/lib/attendance'
 import { formatMinutes, dowJa } from '@/lib/format'
 import { useCachedState, hasCached } from '@/lib/cache'
-import type { Employee, AttendanceEvent, LeaveRequest } from '@/types/db'
+import type { Employee, AttendanceEvent, LeaveRequest, Settings } from '@/types/db'
 
 const CK = 'user-profile:'
 
@@ -75,10 +74,10 @@ export default function ProfilePage() {
       if (!sessData.session || sessData.session.type !== 'user') return
       currentEmpId = sessData.session.empId
     } else {
-      const supabase = createClient()
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-      currentEmpId = session.user.app_metadata?.emp_id
+      const meRes = await fetch('/api/auth/me', { cache: 'no-store' })
+      const meData = await meRes.json()
+      if (!meData.session) return
+      currentEmpId = meData.session.empId
     }
     setEmpId(currentEmpId)
 
@@ -108,33 +107,42 @@ export default function ProfilePage() {
         if (l.type.startsWith('paid')) approvedPaidDays += leaveDays(l)
       })
     } else {
-      const supabase = createClient()
-      const { data: empData } = await supabase
-        .from('employees').select('*').eq('id', currentEmpId).single()
-      employee = empData as Employee | null
+      const { data: empData } = await userSelect<Employee>({
+        table: 'employees', single: true,
+      })
+      employee = empData
 
-      const { data: settings } = await supabase
-        .from('settings').select('monthly_overtime_limit, monthly_overtime_warning').eq('id', 1).single()
+      const { data: settings } = await userSelect<Pick<Settings, 'monthly_overtime_limit' | 'monthly_overtime_warning'>>({
+        table: 'settings',
+        columns: 'monthly_overtime_limit, monthly_overtime_warning',
+        filters: { id: 1 },
+        single: true,
+      })
       if (settings) {
         monthLimit = settings.monthly_overtime_limit ?? 45
         monthWarn = settings.monthly_overtime_warning ?? 36
       }
 
-      const { count: corrC } = await supabase
-        .from('correction_requests').select('*', { count: 'exact', head: true })
-        .eq('emp_id', currentEmpId).eq('status', 'pending')
-      const { count: leaveC } = await supabase
-        .from('leave_requests').select('*', { count: 'exact', head: true })
-        .eq('emp_id', currentEmpId).eq('status', 'pending')
-      pendingCorrections = corrC || 0
-      pendingLeavesCount = leaveC || 0
+      const { data: pendingCorrs } = await userSelect<{ id: string }[]>({
+        table: 'correction_requests',
+        columns: 'id',
+        filters: { status: 'pending' },
+      })
+      const { data: pendingLvs } = await userSelect<{ id: string }[]>({
+        table: 'leave_requests',
+        columns: 'id',
+        filters: { status: 'pending' },
+      })
+      pendingCorrections = pendingCorrs?.length || 0
+      pendingLeavesCount = pendingLvs?.length || 0
 
-      const { data: approvedLeaves } = await supabase
-        .from('leave_requests')
-        .select('type, from_date, to_date')
-        .eq('emp_id', currentEmpId).eq('status', 'approved')
+      const { data: approvedLeaves } = await userSelect<LeaveRequest[]>({
+        table: 'leave_requests',
+        columns: 'type, from_date, to_date',
+        filters: { status: 'approved' },
+      })
       ;(approvedLeaves || []).forEach(l => {
-        if (l.type.startsWith('paid')) approvedPaidDays += leaveDays(l as LeaveRequest)
+        if (l.type.startsWith('paid')) approvedPaidDays += leaveDays(l)
       })
     }
 
@@ -163,13 +171,14 @@ export default function ProfilePage() {
         if (calc.totalWorked > standardMin) overtime += (calc.totalWorked - standardMin)
       })
     } else {
-      const supabase = createClient()
-      const { data } = await supabase
-        .from('attendance').select('events')
-        .eq('emp_id', currentEmpId)
-        .gte('date', monthStart).lte('date', monthEnd)
+      const { data } = await userSelect<{ events: AttendanceEvent[] }[]>({
+        table: 'attendance',
+        columns: 'events',
+        gte: { column: 'date', value: monthStart },
+        lte: { column: 'date', value: monthEnd },
+      })
       ;(data || []).forEach(r => {
-        const calc = calcDay(r.events as AttendanceEvent[])
+        const calc = calcDay(r.events)
         worked += calc.totalWorked
         if (calc.totalWorked > standardMin) overtime += (calc.totalWorked - standardMin)
       })
@@ -205,10 +214,13 @@ export default function ProfilePage() {
       showToast('プロフィールを更新しました', 'success')
       setEmp({ ...emp, ...updates })
     } else {
-      const supabase = createClient()
-      const { error } = await supabase
-        .from('employees').update(updates).eq('id', emp.id)
-      if (error) showToast('保存に失敗しました', 'error')
+      const res = await fetch('/api/user/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      })
+      const data = await res.json()
+      if (!res.ok) showToast('保存に失敗しました: ' + (data.error || '不明'), 'error')
       else {
         showToast('プロフィールを更新しました', 'success')
         setEmp({ ...emp, ...updates })
@@ -241,24 +253,17 @@ export default function ProfilePage() {
       }
       showToast('パスワードを変更しました', 'success')
     } else {
-      const supabase = createClient()
-      const email = `${emp!.id}@b-attendance.local`
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email, password: currentPw,
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: currentPw, newPassword: newPw1 }),
       })
-      if (signInError) {
-        setPwError('現在のパスワードが正しくありません。')
+      const data = await res.json()
+      if (!res.ok) {
+        setPwError(data.error || 'パスワードの変更に失敗しました。')
         setSaving(false)
         return
       }
-      const { error } = await supabase.auth.updateUser({ password: newPw1 })
-      if (error) {
-        setPwError('パスワードの変更に失敗しました。')
-        setSaving(false)
-        return
-      }
-      await supabase
-        .from('employees').update({ pw_changed_at: new Date().toISOString() }).eq('id', emp!.id)
       showToast('パスワードを変更しました', 'success')
     }
     setCurrentPw('')

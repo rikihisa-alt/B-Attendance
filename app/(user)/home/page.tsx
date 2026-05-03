@@ -2,12 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { IS_DEMO, apiGetSession, apiGetAttendance, apiClock, apiCancelClock, apiLogout } from '@/lib/api'
-import { createClient } from '@/lib/supabase/client'
+import { IS_DEMO, apiGetSession, apiGetAttendance, apiClock, apiCancelClock, apiLogout, userSelect } from '@/lib/api'
 import { calcDay, getAvailableActions, liveEvents, sortedEvents } from '@/lib/attendance'
 import { fmtTimeShort, formatMinutes } from '@/lib/format'
 import { useCachedState, hasCached } from '@/lib/cache'
-import type { AttendanceEvent, AttendanceEventType } from '@/types/db'
+import type { Attendance, AttendanceEvent, AttendanceEventType } from '@/types/db'
 
 const CK = 'user-home:'
 
@@ -81,13 +80,11 @@ export default function HomePage() {
       currentEmpId = sessData.session.empId
       name = sessData.session.name || ''
     } else {
-      const supabase = createClient()
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-      currentEmpId = session.user.app_metadata?.emp_id
-      const { data: emp } = await supabase
-        .from('employees').select('name').eq('id', currentEmpId).single()
-      name = emp?.name || ''
+      const meRes = await fetch('/api/auth/me', { cache: 'no-store' })
+      const meData = await meRes.json()
+      if (!meData.session) return
+      currentEmpId = meData.session.empId
+      name = meData.session.name || ''
     }
 
     setEmpId(currentEmpId)
@@ -100,14 +97,16 @@ export default function HomePage() {
       const rec = data.data?.[0]
       setEvents((rec?.events as AttendanceEvent[]) || [])
     } else {
-      const supabase = createClient()
-      const { data } = await supabase
-        .from('attendance').select('events')
-        .eq('emp_id', currentEmpId).eq('date', dateStr).single()
+      const { data } = await userSelect<Attendance>({
+        table: 'attendance',
+        columns: 'events',
+        filters: { date: dateStr },
+        single: true,
+      })
       setEvents((data?.events as AttendanceEvent[]) || [])
     }
     setLoading(false)
-  }, [])
+  }, [setEvents, setEmpId, setUserName])
 
   useEffect(() => { fetchToday() }, [fetchToday])
 

@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { IS_DEMO, apiLoginUser, apiLoginAdmin, apiChangePassword } from '@/lib/api'
-import { createClient } from '@/lib/supabase/client'
 
 type Tab = 'user' | 'admin'
 
@@ -63,39 +62,19 @@ export default function LoginPage() {
         }
         router.push('/home')
       } else {
-        const supabase = createClient()
         const inputId = empId.trim()
-        // 社員IDは大小区別。メールは Supabase Auth が小文字正規化するため小文字で送る
-        const email = `${inputId.toLowerCase()}@b-attendance.local`
-        const { error } = await supabase.auth.signInWithPassword({ email, password: empPw })
-        if (error) {
-          setUserError(
-            error.message.includes('Invalid login credentials')
-              ? '社員IDまたはパスワードが正しくありません'
-              : 'ログイン失敗: ' + error.message
-          )
+        const res = await fetch('/api/auth/login-user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ empId: inputId, password: empPw }),
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          setUserError(data.error || '社員IDまたはパスワードが正しくありません')
           setUserLoading(false)
           return
         }
-        const { data: emp, error: empError } = await supabase
-          .from('employees')
-          .select('first_login')
-          .eq('id', inputId)
-          .maybeSingle()
-        if (empError) {
-          setUserError('従業員情報の取得に失敗しました: ' + empError.message)
-          setUserLoading(false)
-          return
-        }
-        if (!emp) {
-          setUserError(
-            'Authユーザーは存在しますが、employees テーブルに該当行がありません。' +
-            ' 入力された社員IDの大小（例: dhpcm001 と DHPCM001）が登録時と一致しているか確認してください。'
-          )
-          setUserLoading(false)
-          return
-        }
-        if (emp.first_login) {
+        if (data.employee?.first_login) {
           setCurrentEmpId(inputId)
           setInitialPw(empPw)
           setShowFirstLogin(true)
@@ -146,17 +125,17 @@ export default function LoginPage() {
           return
         }
       } else {
-        const supabase = createClient()
-        const { error } = await supabase.auth.updateUser({ password: flPw1 })
-        if (error) {
-          setFlError('パスワードの変更に失敗しました')
+        const res = await fetch('/api/auth/change-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ currentPassword: initialPw, newPassword: flPw1 }),
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          setFlError(data.error || 'パスワードの変更に失敗しました')
           setFlLoading(false)
           return
         }
-        await supabase
-          .from('employees')
-          .update({ first_login: false, pw_changed_at: new Date().toISOString() })
-          .eq('id', currentEmpId)
       }
       setShowFirstLogin(false)
       router.push('/home')

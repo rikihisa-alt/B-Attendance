@@ -222,3 +222,31 @@ export async function adminUpdateAdminNote(empId: string, date: string, adminNot
     body: JSON.stringify({ emp_id: empId, date, admin_note: adminNote }),
   })
 }
+
+// =============================================================
+// 一般ユーザー用: cookie ベース JWT セッションでサーバーAPIを呼ぶ
+// =============================================================
+
+interface UserSelectParams {
+  table: 'attendance' | 'leave_requests' | 'correction_requests' | 'employees' | 'settings'
+  columns?: string
+  filters?: Record<string, string | number | boolean | null>
+  gte?: { column: string; value: string | number }
+  lte?: { column: string; value: string | number }
+  order?: { column: string; ascending?: boolean }
+  limit?: number
+  single?: boolean
+}
+
+export async function userSelect<T = unknown>(
+  params: UserSelectParams,
+): Promise<{ data: T | null; error?: string }> {
+  const res = await fetch('/api/user/select', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  })
+  const json = await res.json()
+  if (!res.ok) return { data: null, error: json.error || 'API エラー' }
+  return { data: json.data }
+}

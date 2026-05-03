@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import bcrypt from 'bcryptjs'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { verifyAdminSession } from '@/lib/auth'
 
@@ -47,33 +48,37 @@ export async function POST(request: Request) {
     if (existingEmp) {
       return NextResponse.json({ error: '同じ社員IDが既に存在します' }, { status: 409 })
     }
+    // Supabase Auth ユーザー作成は best-effort（Email プロバイダ無効時は失敗するが、
+    // 本来のログインは employees.password_hash を見るので致命傷ではない）
+    let authUserId: string | null = null
     const email = authEmail(empId)
     const { data: usersList } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 })
     const dupAuth = usersList?.users.find(u => u.email?.toLowerCase() === email)
     if (dupAuth) {
-      return NextResponse.json({
-        error: '同じメールアドレスの Auth ユーザーが既に存在します（過去の作成失敗の残骸の可能性）'
-      }, { status: 409 })
+      // 既存 Auth ユーザーを再利用（過去の作成失敗の残骸と仮定）
+      authUserId = dupAuth.id
+    } else {
+      const { data: authUser, error: authError } = await admin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        app_metadata: { role: 'user', emp_id: empId },
+      })
+      if (authError) {
+        // 失敗してもログ程度。employees 側で完結する。
+        console.warn('Auth ユーザー作成失敗（employees.password_hash で代替）:', authError.message)
+      } else if (authUser?.user) {
+        authUserId = authUser.user.id
+      }
     }
 
-    // Auth ユーザー作成
-    const { data: authUser, error: authError } = await admin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      app_metadata: { role: 'user', emp_id: empId },
-    })
-    if (authError || !authUser?.user) {
-      return NextResponse.json(
-        { error: 'Authユーザー作成失敗: ' + (authError?.message || 'unknown') },
-        { status: 500 }
-      )
-    }
+    // 従業員ログイン用 bcrypt ハッシュ（こちらが正本）
+    const passwordHash = await bcrypt.hash(password, 10)
 
     // employees 行追加
     const { error: empError } = await admin.from('employees').insert({
       id: empId,
-      auth_user_id: authUser.user.id,
+      auth_user_id: authUserId,
       name,
       kana: body.kana || null,
       birthday: body.birthday || null,
@@ -83,10 +88,13 @@ export async function POST(request: Request) {
       paid_leave_total: body.paid_leave_total ?? 10,
       paid_leave_used: body.paid_leave_used ?? 0,
       first_login: true,
+      password_hash: passwordHash,
     })
     if (empError) {
-      // ロールバック
-      await admin.auth.admin.deleteUser(authUser.user.id)
+      // employees 行追加に失敗したら Auth 側の作り損ないをロールバック
+      if (authUserId && !dupAuth) {
+        await admin.auth.admin.deleteUser(authUserId).catch(() => null)
+      }
       return NextResponse.json(
         { error: 'employees行追加失敗: ' + empError.message },
         { status: 500 }
