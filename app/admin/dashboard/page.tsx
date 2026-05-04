@@ -214,6 +214,12 @@ export default function AdminDashboardPage() {
     if (calc.isOnBreak) onBreak++
   })
 
+  // 出勤者一覧: 本日 firstIn がある人だけを出勤時刻順に
+  const checkedInRows = todayRows
+    .map(({ emp, rec }) => ({ emp, calc: rec ? calcDay(rec.events as AttendanceEvent[]) : null }))
+    .filter((r): r is { emp: typeof r.emp; calc: NonNullable<typeof r.calc> } => !!r.calc?.firstIn)
+    .sort((a, b) => (a.calc.firstIn || '').localeCompare(b.calc.firstIn || ''))
+
   return (
     <section className="page">
       <div className="page-header">
@@ -323,54 +329,83 @@ export default function AdminDashboardPage() {
       <div className="card">
         <div className="card-header">
           <div className="card-title-block">
-            <span className="card-title">本日の勤務状況</span>
-            <span className="card-title-en">STATUS TODAY</span>
+            <span className="card-title">出勤者一覧</span>
+            <span className="card-title-en">CHECKED IN ({checkedInRows.length} / {todayRows.length})</span>
           </div>
         </div>
         <div className="card-body">
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>社員ID / ID</th>
-                  <th>氏名 / Name</th>
-                  <th>所属 / Dept</th>
-                  <th>初回出勤 / First In</th>
-                  <th>最終退勤 / Last Out</th>
-                  <th>打刻数 / Cnt</th>
-                  <th>状態 / Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {todayRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={7}>
-                      <div className="empty-state">登録された従業員がありません</div>
-                    </td>
-                  </tr>
-                ) : (
-                  todayRows.map(({ emp, rec }) => {
-                    const calc = rec ? calcDay(rec.events as AttendanceEvent[]) : null
-                    let statusBadge: React.ReactNode = <span className="badge badge-info">未出勤</span>
-                    if (calc?.isWorking) statusBadge = <span className="badge badge-success">勤務中</span>
-                    else if (calc?.isOnBreak) statusBadge = <span className="badge badge-warning">休憩中</span>
-                    else if (calc?.isAfterOut) statusBadge = <span className="badge badge-info">退勤済</span>
-                    return (
-                      <tr key={emp.id}>
-                        <td className="cell-mono">{emp.id}</td>
-                        <td>{emp.name}</td>
-                        <td>{emp.dept || '-'}</td>
-                        <td className="cell-mono">{calc?.firstIn ? fmtTimeShort(calc.firstIn) : '-'}</td>
-                        <td className="cell-mono">{calc?.lastOut ? fmtTimeShort(calc.lastOut) : '-'}</td>
-                        <td className="cell-mono">{calc?.eventCount || 0}</td>
-                        <td>{statusBadge}</td>
-                      </tr>
-                    )
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+          {checkedInRows.length === 0 ? (
+            <div className="empty-state" style={{ padding: 24 }}>
+              <svg className="icon-svg-lg empty-state-icon"><use href="#i-clock" /></svg>
+              <div>本日まだ誰も出勤していません</div>
+            </div>
+          ) : (
+            <>
+              {/* デスクトップ: テーブル */}
+              <div className="table-wrap checkin-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>社員ID / ID</th>
+                      <th>氏名 / Name</th>
+                      <th>所属 / Dept</th>
+                      <th>出勤 / First In</th>
+                      <th>退勤 / Last Out</th>
+                      <th>打刻数 / Cnt</th>
+                      <th>状態 / Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {checkedInRows.map(({ emp, calc }) => {
+                      let statusBadge: React.ReactNode = null
+                      if (calc.isWorking) statusBadge = <span className="badge badge-success">勤務中</span>
+                      else if (calc.isOnBreak) statusBadge = <span className="badge badge-warning">休憩中</span>
+                      else if (calc.isAfterOut) statusBadge = <span className="badge badge-info">退勤済</span>
+                      else statusBadge = <span className="badge badge-warning">未退勤</span>
+                      return (
+                        <tr key={emp.id}>
+                          <td className="cell-mono">{emp.id}</td>
+                          <td>{emp.name}</td>
+                          <td>{emp.dept || '-'}</td>
+                          <td className="cell-mono">{calc.firstIn ? fmtTimeShort(calc.firstIn) : '-'}</td>
+                          <td className="cell-mono">{calc.lastOut ? fmtTimeShort(calc.lastOut) : '-'}</td>
+                          <td className="cell-mono">{calc.eventCount}</td>
+                          <td>{statusBadge}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* モバイル: カードリスト */}
+              <div className="checkin-cards">
+                {checkedInRows.map(({ emp, calc }) => {
+                  let statusBadge: React.ReactNode = null
+                  if (calc.isWorking) statusBadge = <span className="badge badge-success">勤務中</span>
+                  else if (calc.isOnBreak) statusBadge = <span className="badge badge-warning">休憩中</span>
+                  else if (calc.isAfterOut) statusBadge = <span className="badge badge-info">退勤済</span>
+                  else statusBadge = <span className="badge badge-warning">未退勤</span>
+                  return (
+                    <div key={emp.id} className="checkin-card">
+                      <div className="checkin-card-head">
+                        <div className="checkin-card-name">
+                          <span className="name">{emp.name}</span>
+                          <span className="cell-mono id">{emp.id}</span>
+                        </div>
+                        {statusBadge}
+                      </div>
+                      <div className="checkin-card-meta">
+                        {emp.dept && <span>{emp.dept}</span>}
+                        <span className="cell-mono">出勤 {calc.firstIn ? fmtTimeShort(calc.firstIn) : '-'}</span>
+                        <span className="cell-mono">退勤 {calc.lastOut ? fmtTimeShort(calc.lastOut) : '-'}</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </section>
