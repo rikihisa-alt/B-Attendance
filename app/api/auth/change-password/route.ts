@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { verifyUserSession } from '@/lib/auth'
+import { logAudit } from '@/lib/audit'
 
 export const runtime = 'nodejs'
 
@@ -56,6 +57,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'パスワード更新に失敗しました: ' + updateError.message }, { status: 500 })
     }
 
+    await logAudit({
+      actorType: 'user', actorId: empId, action: 'change_password', request,
+    })
     return NextResponse.json({ success: true })
   } catch (e) {
     return NextResponse.json({ error: '処理エラー: ' + String(e) }, { status: 500 })

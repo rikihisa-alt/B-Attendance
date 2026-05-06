@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { verifyAdminSession } from '@/lib/auth'
+import { logAudit } from '@/lib/audit'
 
 export const runtime = 'nodejs'
 
@@ -58,6 +59,9 @@ export async function PATCH(request: Request) {
       if (error) {
         return NextResponse.json({ error: 'パスワード更新失敗: ' + error.message }, { status: 500 })
       }
+      await logAudit({
+        actorType: 'admin', actorId: 'admin', action: 'change_admin_password', request,
+      })
       return NextResponse.json({ success: true })
     }
 
@@ -80,6 +84,11 @@ export async function PATCH(request: Request) {
     if (error) {
       return NextResponse.json({ error: '更新失敗: ' + error.message }, { status: 500 })
     }
+    await logAudit({
+      actorType: 'admin', actorId: 'admin', action: 'settings_update',
+      targetType: 'settings', targetId: '1',
+      afterData: updates, request,
+    })
     return NextResponse.json({ success: true })
   } catch (e) {
     return NextResponse.json({ error: '処理エラー: ' + String(e) }, { status: 500 })

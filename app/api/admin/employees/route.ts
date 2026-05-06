@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { verifyAdminSession } from '@/lib/auth'
+import { logAudit } from '@/lib/audit'
 
 export const runtime = 'nodejs'
 
@@ -97,6 +98,12 @@ export async function POST(request: Request) {
       )
     }
 
+    await logAudit({
+      actorType: 'admin', actorId: 'admin', action: 'employee_create',
+      targetType: 'employees', targetId: empId,
+      afterData: { id: empId, name, dept: body.dept, position: body.position },
+      request,
+    })
     return NextResponse.json({ success: true, employee: { id: empId, name } })
   } catch (e) {
     return NextResponse.json({ error: '処理エラー: ' + String(e) }, { status: 500 })

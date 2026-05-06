@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { adminSelect, adminUpdateAdminNote } from '@/lib/api'
 import { calcDay, sortedEvents } from '@/lib/attendance'
 import { fmtTimeShort, formatMinutes, dowJa } from '@/lib/format'
-import { useCachedState, hasCached, getCached, setCached } from '@/lib/cache'
+import { useCachedState, hasCached, getCached, setCached, clearCache } from '@/lib/cache'
 import type { Employee, Attendance, AttendanceEvent, AttendanceEventType } from '@/types/db'
 
 const CK = 'admin-attendance:'
@@ -43,6 +43,8 @@ function AttendancePageInner() {
   const [detail, setDetail] = useState<{ rec: Attendance | null; emp: Employee | null; date: string } | null>(null)
   const [adminNote, setAdminNote] = useState('')
   const [savingNote, setSavingNote] = useState(false)
+  const [editPunches, setEditPunches] = useState<{ type: AttendanceEventType; time: string }[]>([])
+  const [savingPunches, setSavingPunches] = useState(false)
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' | 'info' } | null>(null)
 
   const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -118,6 +120,61 @@ function AttendancePageInner() {
     const emp = employees.find(e => e.id === selectedEmp) || null
     setDetail({ date, rec, emp })
     setAdminNote(rec?.admin_note || '')
+    const initial = rec
+      ? sortedEvents(rec.events as AttendanceEvent[])
+          .filter(e => !e.cancelled)
+          .map(e => ({
+            type: e.type,
+            time: new Date(e.time).toLocaleTimeString('ja-JP', {
+              timeZone: 'Asia/Tokyo', hour12: false, hour: '2-digit', minute: '2-digit',
+            }),
+          }))
+      : []
+    setEditPunches(initial)
+  }
+
+  const addPunch = (type: AttendanceEventType) => {
+    setEditPunches(prev => [...prev, { type, time: '' }])
+  }
+  const updatePunch = (idx: number, time: string) => {
+    setEditPunches(prev => prev.map((p, i) => i === idx ? { ...p, time } : p))
+  }
+  const updatePunchType = (idx: number, type: AttendanceEventType) => {
+    setEditPunches(prev => prev.map((p, i) => i === idx ? { ...p, type } : p))
+  }
+  const removePunch = (idx: number) => {
+    setEditPunches(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  const savePunches = async () => {
+    if (!detail) return
+    if (editPunches.some(p => !p.time)) {
+      showToast('時刻が未入力の打刻があります', 'error')
+      return
+    }
+    setSavingPunches(true)
+    const sorted = [...editPunches].sort((a, b) => a.time.localeCompare(b.time))
+    const events = sorted.map(p => ({
+      type: p.type,
+      time: new Date(`${detail.date}T${p.time}:00+09:00`).toISOString(),
+      source: 'admin-edit' as const,
+    }))
+    const res = await fetch('/api/admin/attendance/edit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ emp_id: selectedEmp, date: detail.date, events }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      showToast(data.error || '保存失敗', 'error')
+      setSavingPunches(false)
+      return
+    }
+    showToast('打刻を更新しました', 'success')
+    setSavingPunches(false)
+    setDetail(null)
+    clearCache(`${CK}rows:`)
+    await loadMonth()
   }
 
   const saveAdminNote = async () => {
@@ -252,21 +309,75 @@ function AttendancePageInner() {
                 {detail.date} ({dowJa(new Date(detail.date + 'T00:00:00+09:00'))}) / {detail.emp?.name || selectedEmp}
               </div>
 
-              <div style={{
-                fontSize: 11, fontWeight: 700, color: 'var(--text-soft)',
-                marginBottom: 8, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em',
-              }}>EVENT LOG / 打刻イベント</div>
-              {!detail.rec || (detail.rec.events as AttendanceEvent[]).length === 0 ? (
-                <div className="text-muted text-center" style={{ padding: 24 }}>打刻記録なし</div>
-              ) : (
-                sortedEvents(detail.rec.events as AttendanceEvent[]).map((ev, i) => (
-                  <div key={i} className="eventlog-row">
-                    <span className="eventlog-time">{fmtTimeShort(ev.time)}</span>
-                    <span><span className={`badge ${TYPE_BADGE[ev.type]}`}>{TYPE_LABEL[ev.type]}</span></span>
-                    <span className="text-muted cell-mono">{ev.source || 'manual'}</span>
-                    <span className="text-muted">{ev.note || ''}</span>
+              <div className="punch-list-header">
+                <span className="punch-list-header-label">打刻編集 / EDIT PUNCHES</span>
+                <div className="punch-list-header-actions">
+                  <button type="button" className="btn btn-sm" onClick={() => addPunch('in')}>
+                    <svg className="icon-svg-sm"><use href="#i-plus" /></svg>出勤
+                  </button>
+                  <button type="button" className="btn btn-sm" onClick={() => addPunch('break_start')}>
+                    <svg className="icon-svg-sm"><use href="#i-plus" /></svg>休憩開始
+                  </button>
+                  <button type="button" className="btn btn-sm" onClick={() => addPunch('break_end')}>
+                    <svg className="icon-svg-sm"><use href="#i-plus" /></svg>休憩終了
+                  </button>
+                  <button type="button" className="btn btn-sm" onClick={() => addPunch('out')}>
+                    <svg className="icon-svg-sm"><use href="#i-plus" /></svg>退勤
+                  </button>
+                </div>
+              </div>
+              <div className="punch-list">
+                {editPunches.length === 0 ? (
+                  <div className="text-muted text-center" style={{ padding: 18, fontSize: 12 }}>
+                    打刻がありません。上のボタンから追加してください。
                   </div>
-                ))
+                ) : (
+                  editPunches.map((p, idx) => (
+                    <div className="punch-row" key={idx}>
+                      <select
+                        value={p.type}
+                        onChange={e => updatePunchType(idx, e.target.value as AttendanceEventType)}
+                        className={`badge ${TYPE_BADGE[p.type]}`}
+                        style={{ minWidth: 96, padding: '3px 8px', border: 'none', borderRadius: 12 }}
+                      >
+                        <option value="in">出勤</option>
+                        <option value="break_start">休憩開始</option>
+                        <option value="break_end">休憩終了</option>
+                        <option value="out">退勤</option>
+                      </select>
+                      <input
+                        type="time"
+                        value={p.time}
+                        onChange={e => updatePunch(idx, e.target.value)}
+                      />
+                      <span className="punch-row-num">#{idx + 1}</span>
+                      <button type="button" className="btn btn-danger btn-sm" onClick={() => removePunch(idx)} aria-label="削除">
+                        <svg className="icon-svg-sm"><use href="#i-trash" /></svg>
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10, gap: 6 }}>
+                <button className="btn btn-primary btn-sm" onClick={savePunches} disabled={savingPunches}>
+                  <svg className="icon-svg-sm"><use href="#i-check" /></svg>
+                  {savingPunches ? '保存中...' : '打刻を保存'}
+                </button>
+              </div>
+
+              {detail.rec && (detail.rec.events as AttendanceEvent[]).filter(e => e.cancelled).length > 0 && (
+                <details style={{ marginTop: 12 }}>
+                  <summary style={{ fontSize: 11, color: 'var(--text-muted)', cursor: 'pointer' }}>
+                    取消済み打刻も表示 ({(detail.rec.events as AttendanceEvent[]).filter(e => e.cancelled).length}件)
+                  </summary>
+                  <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted)' }}>
+                    {sortedEvents(detail.rec.events as AttendanceEvent[]).filter(e => e.cancelled).map((ev, i) => (
+                      <div key={i} style={{ textDecoration: 'line-through', padding: '3px 0' }}>
+                        {fmtTimeShort(ev.time)} {TYPE_LABEL[ev.type]} ({ev.source || 'manual'})
+                      </div>
+                    ))}
+                  </div>
+                </details>
               )}
 
               {/* 管理者専用備考 */}

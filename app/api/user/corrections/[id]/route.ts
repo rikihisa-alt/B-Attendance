@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { verifyUserSession } from '@/lib/auth'
+import { logAudit } from '@/lib/audit'
 
 export const runtime = 'nodejs'
 
@@ -36,6 +37,10 @@ export async function PATCH(
     if (error) {
       return NextResponse.json({ error: '取下げに失敗しました: ' + error.message }, { status: 500 })
     }
+    await logAudit({
+      actorType: 'user', actorId: empId, action: 'withdraw_correction',
+      targetType: 'correction_requests', targetId: params.id, request,
+    })
     return NextResponse.json({ success: true })
   } catch (e) {
     return NextResponse.json({ error: '処理エラー: ' + String(e) }, { status: 500 })

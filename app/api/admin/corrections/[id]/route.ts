@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { verifyAdminSession } from '@/lib/auth'
+import { logAudit } from '@/lib/audit'
 import type { CorrectionRequest, AttendanceEvent } from '@/types/db'
 
 export const runtime = 'nodejs'
@@ -65,6 +66,11 @@ export async function PATCH(
       if (rUpdErr) {
         return NextResponse.json({ error: '申請ステータス更新失敗: ' + rUpdErr.message }, { status: 500 })
       }
+      await logAudit({
+        actorType: 'admin', actorId: 'admin', action: 'approve_correction',
+        targetType: 'correction_requests', targetId: id,
+        afterData: { emp_id: r.emp_id, date: r.date }, request,
+      })
       return NextResponse.json({ success: true })
     }
 
@@ -81,6 +87,11 @@ export async function PATCH(
       if (error) {
         return NextResponse.json({ error: '却下失敗: ' + error.message }, { status: 500 })
       }
+      await logAudit({
+        actorType: 'admin', actorId: 'admin', action: 'reject_correction',
+        targetType: 'correction_requests', targetId: id,
+        afterData: { emp_id: r.emp_id, date: r.date, reject_reason: body.reject_reason.trim() }, request,
+      })
       return NextResponse.json({ success: true })
     }
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { verifyAdminSession } from '@/lib/auth'
+import { logAudit } from '@/lib/audit'
 
 export const runtime = 'nodejs'
 
@@ -46,6 +47,11 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: '挿入失敗: ' + error.message }, { status: 500 })
       }
     }
+    await logAudit({
+      actorType: 'admin', actorId: 'admin', action: 'admin_note_update',
+      targetType: 'attendance', targetId: `${body.emp_id}:${body.date}`,
+      afterData: { admin_note: body.admin_note }, request,
+    })
     return NextResponse.json({ success: true })
   } catch (e) {
     return NextResponse.json({ error: '処理エラー: ' + String(e) }, { status: 500 })

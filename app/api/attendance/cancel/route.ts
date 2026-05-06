@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { verifyUserSession } from '@/lib/auth'
+import { logAudit } from '@/lib/audit'
 import { cancelLastEvent } from '@/lib/attendance'
 import type { AttendanceEvent, AttendanceEventType } from '@/types/db'
 
@@ -44,6 +45,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'キャンセルの保存に失敗しました' }, { status: 500 })
     }
 
+    await logAudit({
+      actorType: 'user', actorId: empId, action: 'clock_cancel',
+      targetType: 'attendance', targetId: `${empId}:${dateStr}`,
+      afterData: { type, message: result.message }, request,
+    })
     return NextResponse.json({ success: true, message: result.message, events: result.events })
   } catch {
     return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 })

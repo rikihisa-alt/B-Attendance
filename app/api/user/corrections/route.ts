@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { verifyUserSession } from '@/lib/auth'
+import { logAudit } from '@/lib/audit'
 import type { AttendanceEvent } from '@/types/db'
 
 export const runtime = 'nodejs'
@@ -34,6 +35,11 @@ export async function POST(request: Request) {
     if (error) {
       return NextResponse.json({ error: '修正申請の登録に失敗しました: ' + error.message }, { status: 500 })
     }
+    await logAudit({
+      actorType: 'user', actorId: empId, action: 'submit_correction',
+      targetType: 'correction_requests', targetId: body.date,
+      afterData: { date: body.date, reason: body.reason }, request,
+    })
     return NextResponse.json({ success: true })
   } catch (e) {
     return NextResponse.json({ error: '処理エラー: ' + String(e) }, { status: 500 })

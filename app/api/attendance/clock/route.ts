@@ -1,9 +1,17 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { verifyUserSession } from '@/lib/auth'
+import { logAudit, type AuditAction } from '@/lib/audit'
 import type { AttendanceEvent, AttendanceEventType } from '@/types/db'
 
 export const runtime = 'nodejs'
+
+const TYPE_TO_ACTION: Record<AttendanceEventType, AuditAction> = {
+  in: 'clock_in',
+  out: 'clock_out',
+  break_start: 'break_start',
+  break_end: 'break_end',
+}
 
 export async function POST(request: Request) {
   try {
@@ -46,6 +54,11 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: '打刻の保存に失敗しました' }, { status: 500 })
       }
 
+      await logAudit({
+        actorType: 'user', actorId: empId, action: TYPE_TO_ACTION[type],
+        targetType: 'attendance', targetId: `${empId}:${dateStr}`,
+        afterData: { type, time: newEvent.time }, request,
+      })
       return NextResponse.json({ success: true, events })
     } else {
       const events = [newEvent]
@@ -57,6 +70,11 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: '打刻の保存に失敗しました' }, { status: 500 })
       }
 
+      await logAudit({
+        actorType: 'user', actorId: empId, action: TYPE_TO_ACTION[type],
+        targetType: 'attendance', targetId: `${empId}:${dateStr}`,
+        afterData: { type, time: newEvent.time }, request,
+      })
       return NextResponse.json({ success: true, events })
     }
   } catch {

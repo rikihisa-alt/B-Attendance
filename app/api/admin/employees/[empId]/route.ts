@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { verifyAdminSession } from '@/lib/auth'
+import { logAudit } from '@/lib/audit'
 
 export const runtime = 'nodejs'
 
@@ -65,10 +66,15 @@ export async function PATCH(
         }).catch(() => null)
       }
 
+      await logAudit({
+        actorType: 'admin', actorId: 'admin', action: 'reset_password',
+        targetType: 'employees', targetId: empId, request,
+      })
       return NextResponse.json({ success: true })
     }
 
     // 2. ID 変更（先に処理。以降の更新は新IDに対して行う）
+    const oldId = empId
     if (body.new_id) {
       const newId = body.new_id.trim()
       if (newId !== empId) {
@@ -104,6 +110,11 @@ export async function PATCH(
         }
 
         empId = newId
+        await logAudit({
+          actorType: 'admin', actorId: 'admin', action: 'employee_id_change',
+          targetType: 'employees', targetId: newId,
+          beforeData: { id: oldId }, afterData: { id: newId }, request,
+        })
       }
     }
 
@@ -125,6 +136,11 @@ export async function PATCH(
     if (error) {
       return NextResponse.json({ error: '更新失敗: ' + error.message }, { status: 500 })
     }
+    await logAudit({
+      actorType: 'admin', actorId: 'admin', action: 'employee_update',
+      targetType: 'employees', targetId: empId,
+      afterData: updates, request,
+    })
     return NextResponse.json({ success: true, id: empId })
   } catch (e) {
     return NextResponse.json({ error: '処理エラー: ' + String(e) }, { status: 500 })
@@ -132,7 +148,7 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: { empId: string } }
 ) {
   if (!(await verifyAdminSession())) {
@@ -153,6 +169,10 @@ export async function DELETE(
     if (error) {
       return NextResponse.json({ error: '退職処理失敗: ' + error.message }, { status: 500 })
     }
+    await logAudit({
+      actorType: 'admin', actorId: 'admin', action: 'employee_inactivate',
+      targetType: 'employees', targetId: empId, request,
+    })
     return NextResponse.json({ success: true })
   } catch (e) {
     return NextResponse.json({ error: '処理エラー: ' + String(e) }, { status: 500 })
