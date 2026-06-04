@@ -69,11 +69,6 @@ export default function Timesheet({
     }
   })
 
-  const printedAt = new Date().toLocaleString('ja-JP', {
-    timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit',
-  })
-
   return (
     <div className="print-only timesheet">
       {/* 上部: タイトル + 押印欄を横並び */}
@@ -178,7 +173,6 @@ export default function Timesheet({
         </tbody>
       </table>
 
-      <div className="timesheet-printed-at">印刷日: {printedAt}</div>
     </div>
   )
 }
