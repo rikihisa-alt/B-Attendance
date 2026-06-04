@@ -76,14 +76,32 @@ export default function Timesheet({
 
   return (
     <div className="print-only timesheet">
-      {/* ヘッダー */}
-      <div className="timesheet-header">
-        <div className="timesheet-company">{settings?.company_name || '株式会社'}</div>
-        <h1 className="timesheet-title">出 勤 簿</h1>
-        <div className="timesheet-period">{y}年 {m}月分</div>
+      {/* 上部: タイトル + 押印欄を横並び */}
+      <div className="timesheet-topbar">
+        <div className="timesheet-header">
+          <div className="timesheet-company">{settings?.company_name || '株式会社'}</div>
+          <h1 className="timesheet-title">出 勤 簿</h1>
+          <div className="timesheet-period">{y}年 {m}月分</div>
+        </div>
+        <table className="timesheet-seals">
+          <thead>
+            <tr>
+              <th>本人</th>
+              <th>所属長</th>
+              <th>管理者</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td className="seal-box"></td>
+              <td className="seal-box"></td>
+              <td className="seal-box"></td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
-      {/* 従業員情報 */}
+      {/* 従業員情報 + 月次集計を1テーブルに統合（横並び） */}
       <table className="timesheet-meta">
         <tbody>
           <tr>
@@ -94,12 +112,20 @@ export default function Timesheet({
               {employee?.name || '-'}
               {employee?.kana && <span className="timesheet-kana"> ({employee.kana})</span>}
             </td>
-          </tr>
-          <tr>
             <th>所属</th>
             <td>{employee?.dept || '-'}</td>
             <th>役職</th>
             <td>{employee?.position || '-'}</td>
+          </tr>
+          <tr>
+            <th>出勤日数</th>
+            <td className="cell-mono">{workDays} 日</td>
+            <th>総実労働</th>
+            <td className="cell-mono">{formatMinutes(totalWorked)}</td>
+            <th>総残業</th>
+            <td className="cell-mono">{formatMinutes(totalOvertime)}</td>
+            <th>総休憩</th>
+            <td className="cell-mono">{totalBreak} 分</td>
           </tr>
         </tbody>
       </table>
@@ -152,42 +178,7 @@ export default function Timesheet({
         </tbody>
       </table>
 
-      {/* 月次集計 */}
-      <table className="timesheet-summary">
-        <tbody>
-          <tr>
-            <th>出勤日数</th>
-            <td className="cell-mono">{workDays} 日</td>
-            <th>総実労働</th>
-            <td className="cell-mono">{formatMinutes(totalWorked)}</td>
-            <th>総残業</th>
-            <td className="cell-mono">{formatMinutes(totalOvertime)}</td>
-            <th>総休憩</th>
-            <td className="cell-mono">{totalBreak} 分</td>
-          </tr>
-        </tbody>
-      </table>
-
-      {/* 確認欄 + 印刷日 */}
-      <div className="timesheet-footer">
-        <table className="timesheet-seals">
-          <thead>
-            <tr>
-              <th>本人</th>
-              <th>所属長</th>
-              <th>管理者</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td className="seal-box"></td>
-              <td className="seal-box"></td>
-              <td className="seal-box"></td>
-            </tr>
-          </tbody>
-        </table>
-        <div className="timesheet-printed-at">印刷日: {printedAt}</div>
-      </div>
+      <div className="timesheet-printed-at">印刷日: {printedAt}</div>
     </div>
   )
 }

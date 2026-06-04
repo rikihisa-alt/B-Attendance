@@ -1960,20 +1960,27 @@ textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 
   line-height: 1.2;
 }
 
+.timesheet-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2mm;
+  gap: 6mm;
+}
 .timesheet-header {
-  text-align: center;
-  margin-bottom: 3mm;
+  text-align: left;
+  flex: 1;
 }
 .timesheet-company {
-  font-size: 10pt;
+  font-size: 9pt;
   font-weight: 700;
-  margin-bottom: 1mm;
+  margin-bottom: 0.5mm;
 }
 .timesheet-title {
-  font-size: 16pt;
+  font-size: 18pt;
   font-weight: 700;
   letter-spacing: 0.3em;
-  margin: 1mm 0;
+  margin: 0.5mm 0;
   line-height: 1.1;
 }
 .timesheet-period {
@@ -1985,23 +1992,26 @@ textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 
   width: 100%;
   border-collapse: collapse;
   margin-bottom: 2mm;
-  font-size: 9pt;
+  font-size: 8pt;
+  table-layout: fixed;
 }
 .timesheet-meta th,
 .timesheet-meta td {
   border: 0.5pt solid #000;
-  padding: 0.8mm 2mm;
+  padding: 0.6mm 1.5mm;
   text-align: left;
   line-height: 1.2;
 }
 .timesheet-meta th {
   background: #f0f0f0;
-  width: 14%;
+  width: 7%;
   font-weight: 700;
+  font-size: 7.5pt;
+  text-align: center;
 }
-.timesheet-meta td { width: 36%; }
-.timesheet-name { font-weight: 700; font-size: 10pt; }
-.timesheet-kana { font-size: 8pt; color: #555; font-weight: 400; }
+.timesheet-meta td { width: 18%; }
+.timesheet-name { font-weight: 700; font-size: 9pt; }
+.timesheet-kana { font-size: 7pt; color: #555; font-weight: 400; }
 
 .timesheet-days {
   width: 100%;
@@ -2034,62 +2044,34 @@ textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 
 .timesheet-days .is-sat { color: #0066cc; font-weight: 700; }
 .timesheet-days .is-sun { color: #cc0000; font-weight: 700; }
 
-.timesheet-summary {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 2mm;
-  font-size: 9pt;
-}
-.timesheet-summary th,
-.timesheet-summary td {
-  border: 0.5pt solid #000;
-  padding: 0.8mm 2mm;
-  line-height: 1.2;
-}
-.timesheet-summary th {
-  background: #f0f0f0;
-  width: 10%;
-  text-align: center;
-  font-weight: 700;
-}
-.timesheet-summary td {
-  width: 15%;
-  text-align: right;
-  font-weight: 600;
-}
-
-.timesheet-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  margin-top: 2mm;
-}
 .timesheet-seals {
   border-collapse: collapse;
   font-size: 8pt;
+  flex-shrink: 0;
 }
 .timesheet-seals th,
 .timesheet-seals td {
   border: 0.5pt solid #000;
-  width: 20mm;
+  width: 18mm;
   text-align: center;
   padding: 0.5mm;
   line-height: 1.1;
 }
-.timesheet-seals th { background: #f0f0f0; font-weight: 700; height: 5mm; }
-.timesheet-seals .seal-box { height: 12mm; }
+.timesheet-seals th { background: #f0f0f0; font-weight: 700; height: 4mm; }
+.timesheet-seals .seal-box { height: 11mm; }
 .timesheet-printed-at {
   font-size: 7pt;
   color: #555;
+  text-align: right;
+  margin-top: 1mm;
 }
 
 @media print {
   /* テーブル全体を1枚に押し込めるためページ分割を抑止 */
   .timesheet,
   .timesheet-days,
-  .timesheet-summary,
-  .timesheet-footer,
   .timesheet-days tbody,
-  .timesheet-days tr { page-break-inside: avoid; }
+  .timesheet-days tr,
+  .timesheet-meta { page-break-inside: avoid; }
   .timesheet { page-break-after: avoid; }
 }
