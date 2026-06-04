@@ -1931,3 +1931,156 @@ textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 
   .modal-overlay { padding: 6px; }
   .modal { max-height: calc(100vh - 12px); }
 }
+
+/* ============== 印刷用 (出勤簿) ============== */
+.print-only { display: none; }
+
+@media print {
+  /* リセット: 余計な背景や影を削る */
+  body { background: white !important; color: black !important; font-size: 10pt; }
+  .app-shell { background: white !important; }
+  .app-header, .sidebar, .toolbar, .page-greeting, .page-header,
+  .modal-overlay, .toast, .stats-grid, .empty-state,
+  .card-header, .dashboard-alert, .action-buttons,
+  .history-cards, .requests-cards, .checkin-cards,
+  .history-card-actions, .request-card-actions,
+  .btn, button { display: none !important; }
+  .card { border: none !important; box-shadow: none !important; margin: 0 !important; }
+  .card-body { padding: 0 !important; }
+  .main { padding: 0 !important; max-width: none !important; }
+  .page { background: white !important; }
+  .screen-only { display: none !important; }
+  .print-only { display: block !important; }
+
+  @page { size: A4 portrait; margin: 10mm 8mm; }
+}
+
+/* タイムシート (出勤簿) のスタイル本体: 印刷時のみ可視だが、
+   構造は CSS で常に有効にしておく */
+.timesheet {
+  font-family: 'Noto Sans JP', 'Shippori Mincho', sans-serif;
+  color: #000;
+  background: white;
+  font-size: 10pt;
+  line-height: 1.4;
+}
+
+.timesheet-header {
+  text-align: center;
+  margin-bottom: 8mm;
+}
+.timesheet-company {
+  font-size: 11pt;
+  font-weight: 700;
+  margin-bottom: 2mm;
+}
+.timesheet-title {
+  font-size: 22pt;
+  font-weight: 700;
+  letter-spacing: 0.4em;
+  margin: 2mm 0;
+}
+.timesheet-period {
+  font-size: 13pt;
+  font-weight: 600;
+}
+
+.timesheet-meta {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 4mm;
+  font-size: 10pt;
+}
+.timesheet-meta th,
+.timesheet-meta td {
+  border: 0.5pt solid #000;
+  padding: 2mm 3mm;
+  text-align: left;
+}
+.timesheet-meta th {
+  background: #f0f0f0;
+  width: 14%;
+  font-weight: 700;
+}
+.timesheet-meta td { width: 36%; }
+.timesheet-name { font-weight: 700; font-size: 11pt; }
+.timesheet-kana { font-size: 8pt; color: #555; font-weight: 400; }
+
+.timesheet-days {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9pt;
+  margin-bottom: 4mm;
+}
+.timesheet-days th,
+.timesheet-days td {
+  border: 0.5pt solid #000;
+  padding: 1mm 2mm;
+  text-align: center;
+  vertical-align: middle;
+}
+.timesheet-days th {
+  background: #e8e8e8;
+  font-weight: 700;
+  font-size: 9pt;
+}
+.timesheet-days .col-date { width: 9%; text-align: center; }
+.timesheet-days .col-dow { width: 5%; }
+.timesheet-days .col-time { width: 9%; }
+.timesheet-days .col-mins { width: 9%; }
+.timesheet-days .col-note { width: 41%; text-align: left; padding-left: 2mm; }
+
+.timesheet-days .is-weekend { background: #fafafa; }
+.timesheet-days .is-sat { color: #0066cc; font-weight: 700; }
+.timesheet-days .is-sun { color: #cc0000; font-weight: 700; }
+
+.timesheet-summary {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 6mm;
+  font-size: 10pt;
+}
+.timesheet-summary th,
+.timesheet-summary td {
+  border: 0.5pt solid #000;
+  padding: 2mm 3mm;
+}
+.timesheet-summary th {
+  background: #f0f0f0;
+  width: 10%;
+  text-align: center;
+  font-weight: 700;
+}
+.timesheet-summary td {
+  width: 15%;
+  text-align: right;
+  font-weight: 600;
+}
+
+.timesheet-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: 4mm;
+}
+.timesheet-seals {
+  border-collapse: collapse;
+  font-size: 9pt;
+}
+.timesheet-seals th,
+.timesheet-seals td {
+  border: 0.5pt solid #000;
+  width: 22mm;
+  text-align: center;
+  padding: 1mm;
+}
+.timesheet-seals th { background: #f0f0f0; font-weight: 700; height: 6mm; }
+.timesheet-seals .seal-box { height: 18mm; }
+.timesheet-printed-at {
+  font-size: 8pt;
+  color: #555;
+}
+
+@media print {
+  .timesheet-days tr { page-break-inside: avoid; }
+}

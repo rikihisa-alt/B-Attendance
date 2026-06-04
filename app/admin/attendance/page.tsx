@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useState, useEffect, useCallback, Suspense, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { adminSelect, adminUpdateAdminNote } from '@/lib/api'
 import { calcDay, sortedEvents } from '@/lib/attendance'
 import { fmtTimeShort, formatMinutes, dowJa } from '@/lib/format'
 import { useCachedState, hasCached, getCached, setCached, clearCache } from '@/lib/cache'
-import type { Employee, Attendance, AttendanceEvent, AttendanceEventType } from '@/types/db'
+import Timesheet from '@/components/Timesheet'
+import type { Employee, Attendance, AttendanceEvent, AttendanceEventType, Settings } from '@/types/db'
 
 const CK = 'admin-attendance:'
 
@@ -27,6 +28,7 @@ function AttendancePageInner() {
   const initialEmp = searchParams.get('emp') || ''
 
   const [employees, setEmployees] = useCachedState<Employee[]>(CK + 'employees', [])
+  const [settings, setSettings] = useCachedState<Settings | null>(CK + 'settings', null)
   const [selectedEmp, setSelectedEmp] = useState(initialEmp)
   const [monthStr, setMonthStr] = useState(() => {
     const d = new Date()
@@ -53,15 +55,19 @@ function AttendancePageInner() {
   }
 
   const loadEmployees = useCallback(async () => {
-    const { data } = await adminSelect<Employee[]>({
-      table: 'employees',
-      filters: { status: 'active' },
-      order: { column: 'id' },
-    })
-    const list = data || []
+    const [empRes, sRes] = await Promise.all([
+      adminSelect<Employee[]>({
+        table: 'employees',
+        filters: { status: 'active' },
+        order: { column: 'id' },
+      }),
+      adminSelect<Settings>({ table: 'settings', filters: { id: 1 }, single: true }),
+    ])
+    const list = empRes.data || []
     setEmployees(list)
+    setSettings(sRes.data)
     if (!selectedEmp && list.length > 0) setSelectedEmp(list[0].id)
-  }, [selectedEmp])
+  }, [selectedEmp, setEmployees, setSettings])
 
   useEffect(() => { loadEmployees() }, [loadEmployees])
 
@@ -196,6 +202,15 @@ function AttendancePageInner() {
 
   const selectedEmpInfo = employees.find(e => e.id === selectedEmp)
 
+  // 印刷用にレコードを date-> Attendance のマップに整形
+  const recordMap = useMemo(() => {
+    const map: Record<string, Attendance> = {}
+    for (const { date, rec } of rows) {
+      if (rec) map[date] = rec
+    }
+    return map
+  }, [rows])
+
   return (
     <section className="page">
       <div className="page-header">
@@ -235,6 +250,10 @@ function AttendancePageInner() {
             </select>
             <div className="spacer"></div>
             <button className="btn btn-sm" onClick={loadMonth}>↻ 更新</button>
+            <button className="btn btn-sm" onClick={() => window.print()} disabled={!selectedEmp}>
+              <svg className="icon-svg-sm"><use href="#i-download" /></svg>
+              出勤簿 印刷
+            </button>
           </div>
 
           <div className="table-wrap">
@@ -437,6 +456,14 @@ function AttendancePageInner() {
           <span className="toast-msg">{toast.msg}</span>
         </div>
       )}
+
+      <Timesheet
+        employee={selectedEmpInfo || null}
+        monthStr={monthStr}
+        records={recordMap}
+        settings={settings}
+        showAdminNote
+      />
     </section>
   )
 }

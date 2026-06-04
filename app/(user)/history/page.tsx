@@ -6,7 +6,8 @@ import { IS_DEMO, apiGetSession, apiGetAttendance, userSelect } from '@/lib/api'
 import { calcDay, sortedEvents } from '@/lib/attendance'
 import { fmtTimeShort, formatMinutes, dowJa } from '@/lib/format'
 import { useCachedState, getCached, setCached } from '@/lib/cache'
-import type { AttendanceEvent, Attendance, AttendanceEventType } from '@/types/db'
+import Timesheet from '@/components/Timesheet'
+import type { AttendanceEvent, Attendance, AttendanceEventType, Employee, Settings } from '@/types/db'
 
 const CK = 'user-history:'
 
@@ -57,6 +58,8 @@ export default function HistoryPage() {
   )
   const [empId, setEmpId] = useCachedState<string>(CK + 'empId', '')
   const [userName, setUserName] = useCachedState<string>(CK + 'userName', '')
+  const [employee, setEmployee] = useCachedState<Employee | null>(CK + 'employee', null)
+  const [settings, setSettings] = useCachedState<Settings | null>(CK + 'settings', null)
   const [loading, setLoading] = useState<boolean>(
     () => !getCached<Record<string, Attendance>>(`${CK}records:${thisMonth()}`)
   )
@@ -103,19 +106,25 @@ export default function HistoryPage() {
       setRecords(map)
       setCached(cacheKey, map)
     } else {
-      const { data } = await userSelect<Attendance[]>({
-        table: 'attendance',
-        gte: { column: 'date', value: startDate },
-        lte: { column: 'date', value: endDate },
-        order: { column: 'date' },
-      })
+      const [attRes, empRes, sRes] = await Promise.all([
+        userSelect<Attendance[]>({
+          table: 'attendance',
+          gte: { column: 'date', value: startDate },
+          lte: { column: 'date', value: endDate },
+          order: { column: 'date' },
+        }),
+        userSelect<Employee>({ table: 'employees', single: true }),
+        userSelect<Settings>({ table: 'settings', filters: { id: 1 }, single: true }),
+      ])
       const map: Record<string, Attendance> = {}
-      ;(data || []).forEach(r => { map[r.date] = r })
+      ;(attRes.data || []).forEach(r => { map[r.date] = r })
       setRecords(map)
       setCached(cacheKey, map)
+      setEmployee(empRes.data)
+      setSettings(sRes.data)
     }
     setLoading(false)
-  }, [monthStr, setEmpId, setUserName])
+  }, [monthStr, setEmpId, setUserName, setEmployee, setSettings])
 
   useEffect(() => { fetchMonth() }, [fetchMonth])
 
@@ -178,11 +187,17 @@ export default function HistoryPage() {
             <span className="card-title">月次サマリー</span>
             <span className="card-title-en">MONTHLY SUMMARY</span>
           </div>
-          <select value={monthStr} onChange={e => setMonthStr(e.target.value)}>
-            {monthOptions.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <select value={monthStr} onChange={e => setMonthStr(e.target.value)}>
+              {monthOptions.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+            <button className="btn btn-sm" onClick={() => window.print()}>
+              <svg className="icon-svg-sm"><use href="#i-download" /></svg>
+              出勤簿 印刷
+            </button>
+          </div>
         </div>
         <div className="card-body">
           <div className="stats-grid mb-12">
@@ -450,6 +465,13 @@ export default function HistoryPage() {
           </div>
         </div>
       )}
+
+      <Timesheet
+        employee={employee || { id: empId, name: userName, kana: null, dept: null, position: null }}
+        monthStr={monthStr}
+        records={records}
+        settings={settings}
+      />
     </section>
   )
 }
