@@ -1948,50 +1948,51 @@ textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 
   .screen-only { display: none !important; }
   .print-only { display: block !important; }
 
-  @page { size: A4 portrait; margin: 10mm 8mm; }
+  @page { size: A4 portrait; margin: 6mm 7mm; }
 }
 
-/* タイムシート (出勤簿) のスタイル本体: 印刷時のみ可視だが、
-   構造は CSS で常に有効にしておく */
+/* タイムシート (出勤簿) のスタイル本体: A4 一枚に収まるよう詰め気味に */
 .timesheet {
   font-family: 'Noto Sans JP', 'Shippori Mincho', sans-serif;
   color: #000;
   background: white;
-  font-size: 10pt;
-  line-height: 1.4;
+  font-size: 9pt;
+  line-height: 1.2;
 }
 
 .timesheet-header {
   text-align: center;
-  margin-bottom: 8mm;
+  margin-bottom: 3mm;
 }
 .timesheet-company {
-  font-size: 11pt;
+  font-size: 10pt;
   font-weight: 700;
-  margin-bottom: 2mm;
+  margin-bottom: 1mm;
 }
 .timesheet-title {
-  font-size: 22pt;
+  font-size: 16pt;
   font-weight: 700;
-  letter-spacing: 0.4em;
-  margin: 2mm 0;
+  letter-spacing: 0.3em;
+  margin: 1mm 0;
+  line-height: 1.1;
 }
 .timesheet-period {
-  font-size: 13pt;
+  font-size: 11pt;
   font-weight: 600;
 }
 
 .timesheet-meta {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 4mm;
-  font-size: 10pt;
+  margin-bottom: 2mm;
+  font-size: 9pt;
 }
 .timesheet-meta th,
 .timesheet-meta td {
   border: 0.5pt solid #000;
-  padding: 2mm 3mm;
+  padding: 0.8mm 2mm;
   text-align: left;
+  line-height: 1.2;
 }
 .timesheet-meta th {
   background: #f0f0f0;
@@ -1999,47 +2000,51 @@ textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 
   font-weight: 700;
 }
 .timesheet-meta td { width: 36%; }
-.timesheet-name { font-weight: 700; font-size: 11pt; }
+.timesheet-name { font-weight: 700; font-size: 10pt; }
 .timesheet-kana { font-size: 8pt; color: #555; font-weight: 400; }
 
 .timesheet-days {
   width: 100%;
   border-collapse: collapse;
-  font-size: 9pt;
-  margin-bottom: 4mm;
+  font-size: 8pt;
+  margin-bottom: 2mm;
+  table-layout: fixed;
 }
 .timesheet-days th,
 .timesheet-days td {
   border: 0.5pt solid #000;
-  padding: 1mm 2mm;
+  padding: 0.4mm 1.5mm;
   text-align: center;
   vertical-align: middle;
+  line-height: 1.2;
 }
 .timesheet-days th {
   background: #e8e8e8;
   font-weight: 700;
-  font-size: 9pt;
+  font-size: 8pt;
+  padding: 0.8mm 1.5mm;
 }
 .timesheet-days .col-date { width: 9%; text-align: center; }
 .timesheet-days .col-dow { width: 5%; }
 .timesheet-days .col-time { width: 9%; }
 .timesheet-days .col-mins { width: 9%; }
-.timesheet-days .col-note { width: 41%; text-align: left; padding-left: 2mm; }
+.timesheet-days .col-note { width: 41%; text-align: left; padding-left: 1.5mm; }
 
-.timesheet-days .is-weekend { background: #fafafa; }
+.timesheet-days .is-weekend { background: #f6f6f6; }
 .timesheet-days .is-sat { color: #0066cc; font-weight: 700; }
 .timesheet-days .is-sun { color: #cc0000; font-weight: 700; }
 
 .timesheet-summary {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 6mm;
-  font-size: 10pt;
+  margin-bottom: 2mm;
+  font-size: 9pt;
 }
 .timesheet-summary th,
 .timesheet-summary td {
   border: 0.5pt solid #000;
-  padding: 2mm 3mm;
+  padding: 0.8mm 2mm;
+  line-height: 1.2;
 }
 .timesheet-summary th {
   background: #f0f0f0;
@@ -2057,26 +2062,34 @@ textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  margin-top: 4mm;
+  margin-top: 2mm;
 }
 .timesheet-seals {
   border-collapse: collapse;
-  font-size: 9pt;
+  font-size: 8pt;
 }
 .timesheet-seals th,
 .timesheet-seals td {
   border: 0.5pt solid #000;
-  width: 22mm;
+  width: 20mm;
   text-align: center;
-  padding: 1mm;
+  padding: 0.5mm;
+  line-height: 1.1;
 }
-.timesheet-seals th { background: #f0f0f0; font-weight: 700; height: 6mm; }
-.timesheet-seals .seal-box { height: 18mm; }
+.timesheet-seals th { background: #f0f0f0; font-weight: 700; height: 5mm; }
+.timesheet-seals .seal-box { height: 12mm; }
 .timesheet-printed-at {
-  font-size: 8pt;
+  font-size: 7pt;
   color: #555;
 }
 
 @media print {
+  /* テーブル全体を1枚に押し込めるためページ分割を抑止 */
+  .timesheet,
+  .timesheet-days,
+  .timesheet-summary,
+  .timesheet-footer,
+  .timesheet-days tbody,
   .timesheet-days tr { page-break-inside: avoid; }
+  .timesheet { page-break-after: avoid; }
 }
