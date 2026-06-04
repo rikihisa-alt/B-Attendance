@@ -1936,17 +1936,13 @@ textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 
 .print-only { display: none; }
 
 @media print {
-  /* リセット: 余計な背景や影を削る */
+  /* 画面用の要素はすべて非表示。.print-only だけ表示する。 */
   body { background: white !important; color: black !important; font-size: 10pt; }
   .app-shell { background: white !important; }
-  .app-header, .sidebar, .toolbar, .page-greeting, .page-header,
-  .modal-overlay, .toast, .stats-grid, .empty-state,
-  .card-header, .dashboard-alert, .action-buttons,
-  .history-cards, .requests-cards, .checkin-cards,
-  .history-card-actions, .request-card-actions,
-  .btn, button { display: none !important; }
-  .card { border: none !important; box-shadow: none !important; margin: 0 !important; }
-  .card-body { padding: 0 !important; }
+  .app-header, .sidebar, .page-header, .page-greeting, .card,
+  .modal-overlay, .toast, .stats-grid, .toolbar, .btn, button {
+    display: none !important;
+  }
   .main { padding: 0 !important; max-width: none !important; }
   .page { background: white !important; }
   .screen-only { display: none !important; }
