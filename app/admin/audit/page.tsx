@@ -54,7 +54,7 @@ const ACTION_CATEGORY: Record<string, 'auth' | 'clock' | 'edit' | 'request' | 'a
 }
 
 const CATEGORY_COLOR: Record<string, string> = {
-  auth: 'var(--primary)',
+  auth: 'var(--blue)',
   clock: 'var(--orange)',
   edit: 'var(--purple)',
   request: 'var(--teal)',

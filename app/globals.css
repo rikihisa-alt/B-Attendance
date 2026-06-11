@@ -2,26 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 :root {
-  --bg: #fafbfd;
-  --bg-soft: #f4f6fa;
+  /* freee風: 背景は白、アクセントはグリーン */
+  --bg: #ffffff;
+  --bg-soft: #f4f8f5;
   --card: #ffffff;
-  --border: #e5e8ee;
-  --border-strong: #d0d6e0;
-  --hover: #f7f9fc;
+  --border: #e4ebe6;
+  --border-strong: #ccdad1;
+  --hover: #f2f8f4;
 
-  --text: #1a2233;
-  --text-soft: #4a5568;
-  --text-muted: #7c8a9c;
-  --text-faint: #a8b2bf;
+  --text: #1f2b25;
+  --text-soft: #4a5a51;
+  --text-muted: #7c8d83;
+  --text-faint: #a8b6ad;
 
-  --primary: #1f6dc9;
-  --primary-dark: #155aab;
-  --primary-light: #4a8ed8;
-  --primary-pale: #eef4fb;
-  --primary-bg: #f7faff;
+  --primary: #2f9e63;
+  --primary-dark: #237d4d;
+  --primary-light: #5cb887;
+  --primary-pale: #e6f4ec;
+  --primary-bg: #f3faf6;
+
+  /* ヘッダー・サイドバー用パステルグリーン */
+  --bar-bg: #ddf0e4;
+  --bar-bg-soft: #eaf6ef;
+  --bar-border: #c6e4d2;
 
   --orange: #ed8936;
   --orange-bg: #fef5ec;
@@ -35,17 +41,19 @@
   --red-bg: #fdf0f0;
   --purple: #805ad5;
   --purple-bg: #f5f0fc;
+  --blue: #3b82d4;
+  --blue-light: #6ba5e0;
 
-  --shadow-xs: 0 1px 2px rgba(20, 50, 90, 0.04);
-  --shadow-sm: 0 2px 4px rgba(20, 50, 90, 0.06);
-  --shadow: 0 4px 12px rgba(20, 50, 90, 0.08);
-  --shadow-lg: 0 16px 40px rgba(20, 50, 90, 0.16);
+  --shadow-xs: 0 1px 3px rgba(35, 84, 58, 0.05);
+  --shadow-sm: 0 2px 8px rgba(35, 84, 58, 0.07);
+  --shadow: 0 4px 16px rgba(35, 84, 58, 0.09);
+  --shadow-lg: 0 16px 40px rgba(35, 84, 58, 0.15);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  font-family: 'Shippori Mincho', 'Noto Sans JP', serif;
+  font-family: 'Noto Sans JP', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', sans-serif;
   background: var(--bg);
   color: var(--text);
   font-size: 14px;
@@ -78,8 +86,8 @@ body {
   position: absolute;
   inset: 0;
   background-image:
-    radial-gradient(circle at 20% 30%, rgba(31, 109, 201, 0.05) 0%, transparent 45%),
-    radial-gradient(circle at 80% 70%, rgba(56, 161, 105, 0.04) 0%, transparent 45%);
+    radial-gradient(circle at 20% 30%, rgba(47, 158, 99, 0.06) 0%, transparent 45%),
+    radial-gradient(circle at 80% 70%, rgba(92, 184, 135, 0.05) 0%, transparent 45%);
   pointer-events: none;
 }
 
@@ -100,8 +108,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid var(--border);
-  background: var(--card);
+  border-bottom: 1px solid var(--bar-border);
+  background: var(--bar-bg);
 }
 
 .login-header-brand {
@@ -145,7 +153,7 @@ body {
   white-space: nowrap;
 }
 
-.login-logo-sub .ja { font-family: 'Shippori Mincho', serif; font-size: 16px; color: var(--text-soft); font-weight: 600; }
+.login-logo-sub .ja { font-family: 'Noto Sans JP', sans-serif; font-size: 16px; color: var(--text-soft); font-weight: 600; }
 .login-logo-sub .en { font-family: 'JetBrains Mono', monospace; letter-spacing: 0.12em; font-size: 11px; color: var(--text-muted); font-weight: 600; }
 .login-logo-sub .sep { color: var(--text-faint); font-size: 14px; }
 
@@ -153,9 +161,10 @@ body {
   font-family: 'JetBrains Mono', monospace;
   font-size: 13px;
   letter-spacing: 0.06em;
-  color: var(--primary);
+  color: var(--primary-dark);
   padding: 6px 14px;
-  background: var(--primary-pale);
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid var(--bar-border);
   border-radius: 6px;
 }
 
@@ -261,7 +270,7 @@ body {
 .login-tab.active .login-tab-icon { color: var(--primary); }
 
 .login-tab .ja-en { display: flex; flex-direction: column; gap: 0; }
-.login-tab .ja { font-family: 'Shippori Mincho', serif; }
+.login-tab .ja { font-family: 'Noto Sans JP', sans-serif; }
 
 .login-form {
   padding: 30px 32px 26px;
@@ -282,7 +291,7 @@ body {
   font-weight: 500;
 }
 
-.field label .lbl-ja { font-family: 'Shippori Mincho', serif; font-weight: 600; }
+.field label .lbl-ja { font-family: 'Noto Sans JP', sans-serif; font-weight: 600; }
 .field label .lbl-en { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-faint); letter-spacing: 0.1em; }
 
 .field input, .field select, .field textarea {
@@ -290,7 +299,7 @@ body {
   padding: 11px 14px;
   border: 1px solid var(--border-strong);
   background: var(--card);
-  font-family: 'Shippori Mincho', serif;
+  font-family: 'Noto Sans JP', sans-serif;
   font-size: 14px;
   color: var(--text);
   border-radius: 8px;
@@ -300,7 +309,7 @@ body {
 .field input:focus, .field select:focus, .field textarea:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(31, 109, 201, 0.12);
+  box-shadow: 0 0 0 3px rgba(47, 158, 99, 0.14);
 }
 
 .field input::placeholder { color: var(--text-faint); }
@@ -308,7 +317,7 @@ body {
 .btn {
   padding: 10px 18px;
   border: 1px solid var(--border-strong);
-  font-family: 'Shippori Mincho', serif;
+  font-family: 'Noto Sans JP', sans-serif;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -373,8 +382,8 @@ body {
 
 /* ============== ヘッダー ============== */
 .app-header {
-  background: var(--card);
-  border-bottom: 1px solid var(--border);
+  background: var(--bar-bg);
+  border-bottom: 1px solid var(--bar-border);
   padding: 0 24px;
   height: 60px;
   display: flex;
@@ -396,7 +405,7 @@ body {
   border-radius: 8px;
   transition: background 0.15s ease;
 }
-.header-brand:hover { background: var(--hover); }
+.header-brand:hover { background: rgba(255, 255, 255, 0.6); }
 
 .header-logo-mark {
   width: 44px;
@@ -424,10 +433,10 @@ body {
   font-size: 13px;
   letter-spacing: 0.06em;
   padding: 7px 12px;
-  background: var(--primary-bg);
-  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid var(--bar-border);
   border-radius: 6px;
-  color: var(--primary);
+  color: var(--primary-dark);
 }
 
 .header-user {
@@ -435,8 +444,8 @@ body {
   align-items: center;
   gap: 9px;
   padding: 5px 12px 5px 5px;
-  background: var(--bg-soft);
-  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid var(--bar-border);
   border-radius: 24px;
 }
 
@@ -458,9 +467,9 @@ body {
 .header-user-role { font-size: 9px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.15em; }
 
 .header-logout-btn {
-  background: var(--card);
+  background: rgba(255, 255, 255, 0.85);
   color: var(--text);
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--bar-border);
   padding: 7px 14px;
   font-family: inherit;
   font-size: 12px;
@@ -502,8 +511,8 @@ body {
 .app-body { display: grid; grid-template-columns: 220px 1fr; }
 
 .sidebar {
-  background: var(--card);
-  border-right: 1px solid var(--border);
+  background: var(--bar-bg-soft);
+  border-right: 1px solid var(--bar-border);
   padding: 16px 0;
   display: flex;
   flex-direction: column;
@@ -513,7 +522,7 @@ body {
   overflow-y: auto;
 }
 
-.sidebar-section + .sidebar-section { border-top: 1px solid var(--border); margin-top: 10px; padding-top: 12px; }
+.sidebar-section + .sidebar-section { border-top: 1px solid var(--bar-border); margin-top: 10px; padding-top: 12px; }
 
 .nav-section-label {
   padding: 10px 22px 6px;
@@ -545,12 +554,13 @@ body {
   transition: all 0.15s;
 }
 
-.nav-item:hover { background: var(--hover); color: var(--primary); }
+.nav-item:hover { background: rgba(255, 255, 255, 0.7); color: var(--primary-dark); }
 
 .nav-item.active {
-  background: var(--primary-pale);
-  color: var(--primary);
+  background: var(--card);
+  color: var(--primary-dark);
   border-left-color: var(--primary);
+  box-shadow: var(--shadow-xs);
   /* 選択/非選択で文字サイズ・太さは絶対に変えない（色とボーダーだけで区別） */
   font-weight: 500;
   font-size: 13px;
@@ -580,7 +590,7 @@ body {
 .sidebar-footer {
   margin-top: auto;
   padding: 14px 22px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--bar-border);
   font-family: 'JetBrains Mono', monospace;
   font-size: 9px;
   color: var(--text-faint);
@@ -617,8 +627,8 @@ body {
   background: var(--card);
   border: 1px solid var(--border);
   margin-bottom: 16px;
-  border-radius: 10px;
-  box-shadow: var(--shadow-xs);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 
@@ -667,7 +677,7 @@ body {
 .profile-row:last-child { border-bottom: none; }
 .profile-row-label { display: flex; flex-direction: column; gap: 1px; line-height: 1.2; }
 .profile-row-label .lbl-ja {
-  font-family: 'Shippori Mincho', serif;
+  font-family: 'Noto Sans JP', sans-serif;
   font-weight: 600;
   font-size: 13px;
   color: var(--text);
@@ -695,7 +705,7 @@ body {
 .profile-row-value select:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(31, 109, 201, 0.1);
+  box-shadow: 0 0 0 3px rgba(47, 158, 99, 0.12);
 }
 .profile-row-value input[readonly] {
   background: var(--bg-soft);
@@ -839,7 +849,7 @@ body {
   border: none;
   background: var(--card);
   color: var(--text);
-  font-family: 'Shippori Mincho', serif;
+  font-family: 'Noto Sans JP', sans-serif;
   cursor: pointer;
   transition: all 0.15s;
   text-align: left;
@@ -1007,7 +1017,7 @@ body {
   gap: 6px;
   cursor: pointer;
   border: none;
-  font-family: 'Shippori Mincho', serif;
+  font-family: 'Noto Sans JP', sans-serif;
   overflow: hidden;
   transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 10;
@@ -1105,12 +1115,12 @@ body {
 .stat-label-ja { font-size: 11px; color: var(--text-soft); font-weight: 600; }
 .stat-label-en { font-size: 9px; color: var(--text-faint); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.12em; }
 .stat-value { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; color: var(--text); line-height: 1.1; }
-.stat-unit { font-size: 11px; color: var(--text-muted); margin-left: 3px; font-weight: 500; font-family: 'Shippori Mincho', serif; }
+.stat-unit { font-size: 11px; color: var(--text-muted); margin-left: 3px; font-weight: 500; font-family: 'Noto Sans JP', sans-serif; }
 
 .stat-card.color-orange .stat-icon-box { background: linear-gradient(135deg, var(--orange), #d97706); }
 .stat-card.color-green .stat-icon-box { background: linear-gradient(135deg, var(--green), #15803d); }
 .stat-card.color-yellow .stat-icon-box { background: linear-gradient(135deg, var(--yellow), #ca8a04); }
-.stat-card.color-blue .stat-icon-box { background: linear-gradient(135deg, var(--primary), var(--primary-light)); }
+.stat-card.color-blue .stat-icon-box { background: linear-gradient(135deg, var(--blue), var(--blue-light)); }
 .stat-card.color-red .stat-icon-box { background: linear-gradient(135deg, var(--red), #c53030); }
 .stat-card.color-purple .stat-icon-box { background: linear-gradient(135deg, var(--purple), #6b46c1); }
 
@@ -1172,7 +1182,7 @@ body {
 .toolbar input, .toolbar select {
   padding: 8px 12px;
   border: 1px solid var(--border-strong);
-  font-family: 'Shippori Mincho', serif;
+  font-family: 'Noto Sans JP', sans-serif;
   font-size: 13px;
   background: var(--card);
   color: var(--text);
@@ -1258,7 +1268,7 @@ textarea {
   width: 100%;
   padding: 10px 12px;
   border: 1px solid var(--border-strong);
-  font-family: 'Shippori Mincho', serif;
+  font-family: 'Noto Sans JP', sans-serif;
   font-size: 14px;
   resize: vertical;
   min-height: 80px;
@@ -1266,7 +1276,7 @@ textarea {
   background: var(--card);
   color: var(--text);
 }
-textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(31, 109, 201, 0.12); }
+textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(47, 158, 99, 0.14); }
 
 /* ============== トースト ============== */
 .toast {
@@ -1762,7 +1772,7 @@ textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 
     padding: 6px 8px;
     gap: 4px;
     border-right: none;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--bar-border);
     overflow-x: auto;
     overflow-y: hidden;
     z-index: 40;
@@ -1778,7 +1788,7 @@ textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 
     border-top: none;
     margin-top: 0;
     padding-top: 0;
-    border-left: 1px solid var(--border);
+    border-left: 1px solid var(--bar-border);
     margin-left: 4px;
     padding-left: 8px;
   }
@@ -1953,7 +1963,7 @@ textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 
 
 /* タイムシート (出勤簿) のスタイル本体: A4 一枚に収まるよう詰め気味に */
 .timesheet {
-  font-family: 'Noto Sans JP', 'Shippori Mincho', sans-serif;
+  font-family: 'Noto Sans JP', 'Hiragino Sans', sans-serif;
   color: #000;
   background: white;
   font-size: 9pt;

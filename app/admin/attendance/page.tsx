@@ -428,7 +428,7 @@ function AttendancePageInner() {
                   style={{
                     width: '100%', minHeight: 70, padding: '10px 12px',
                     border: '1px solid var(--border-strong)',
-                    fontFamily: "'Shippori Mincho', serif", fontSize: 13, borderRadius: 6,
+                    fontFamily: "'Noto Sans JP', sans-serif", fontSize: 13, borderRadius: 6,
                     background: 'white', resize: 'vertical',
                   }}
                   placeholder="管理者だけが見れる備考。承認や修正の経緯、内部メモなどを記録できます。"

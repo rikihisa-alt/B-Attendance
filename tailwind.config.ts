@@ -9,12 +9,13 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        bg: { DEFAULT: '#fafbfd', soft: '#f4f6fa' },
+        bg: { DEFAULT: '#ffffff', soft: '#f4f8f5' },
         card: '#ffffff',
-        border: { DEFAULT: '#e5e8ee', strong: '#d0d6e0' },
-        hover: '#f7f9fc',
-        text: { DEFAULT: '#1a2233', soft: '#4a5568', muted: '#7c8a9c', faint: '#a8b2bf' },
-        primary: { DEFAULT: '#1f6dc9', dark: '#155aab', light: '#4a8ed8', pale: '#eef4fb', bg: '#f7faff' },
+        border: { DEFAULT: '#e4ebe6', strong: '#ccdad1' },
+        hover: '#f2f8f4',
+        text: { DEFAULT: '#1f2b25', soft: '#4a5a51', muted: '#7c8d83', faint: '#a8b6ad' },
+        primary: { DEFAULT: '#2f9e63', dark: '#237d4d', light: '#5cb887', pale: '#e6f4ec', bg: '#f3faf6' },
+        bar: { DEFAULT: '#ddf0e4', soft: '#eaf6ef', border: '#c6e4d2' },
         accent: {
           orange: { DEFAULT: '#ed8936', bg: '#fef5ec' },
           green: { DEFAULT: '#38a169', bg: '#f0f9f4' },
@@ -25,15 +26,14 @@ const config: Config = {
         },
       },
       fontFamily: {
-        mincho: ["'Shippori Mincho'", "'Noto Sans JP'", "serif"],
-        sans: ["'Noto Sans JP'", "sans-serif"],
+        sans: ["'Noto Sans JP'", "'Hiragino Sans'", "sans-serif"],
         mono: ["'JetBrains Mono'", "monospace"],
       },
       boxShadow: {
-        xs: '0 1px 2px rgba(20, 50, 90, 0.04)',
-        sm: '0 2px 4px rgba(20, 50, 90, 0.06)',
-        DEFAULT: '0 4px 12px rgba(20, 50, 90, 0.08)',
-        lg: '0 16px 40px rgba(20, 50, 90, 0.16)',
+        xs: '0 1px 3px rgba(35, 84, 58, 0.05)',
+        sm: '0 2px 8px rgba(35, 84, 58, 0.07)',
+        DEFAULT: '0 4px 16px rgba(35, 84, 58, 0.09)',
+        lg: '0 16px 40px rgba(35, 84, 58, 0.15)',
       },
     },
   },
