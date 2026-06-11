@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { adminSelect, adminApproveCorrection, adminRejectCorrection } from '@/lib/api'
 import { fmtTimeShort } from '@/lib/format'
-import { getCached, setCached } from '@/lib/cache'
+import { getCached, setCached, clearCache } from '@/lib/cache'
 import type { CorrectionRequest, AttendanceEvent, AttendanceEventType, CorrectionRequestStatus } from '@/types/db'
 
 const CK = 'admin-corrections:'
@@ -76,6 +76,12 @@ export default function AdminCorrectionsPage() {
       return
     }
     showToast('修正を承認しました', 'success')
+    // 承認で勤怠データ本体が書き換わるので、関連ページのキャッシュも全て破棄
+    clearCache(CK)
+    clearCache('admin-attendance:')
+    clearCache('admin-overtime:')
+    clearCache('admin-reports:')
+    clearCache('admin-dashboard:')
     await load()
     setSubmitting(false)
   }
@@ -98,6 +104,9 @@ export default function AdminCorrectionsPage() {
     }
     showToast('修正を却下しました', 'info')
     setRejectingId(null)
+    // 申請ステータスが変わるので全フィルタ分のキャッシュとダッシュボードを破棄
+    clearCache(CK)
+    clearCache('admin-dashboard:')
     await load()
     setSubmitting(false)
   }

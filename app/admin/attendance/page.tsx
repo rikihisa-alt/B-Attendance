@@ -179,7 +179,11 @@ function AttendancePageInner() {
     showToast('打刻を更新しました', 'success')
     setSavingPunches(false)
     setDetail(null)
+    // 勤怠データが変わるので集計系ページのキャッシュも破棄
     clearCache(`${CK}rows:`)
+    clearCache('admin-overtime:')
+    clearCache('admin-reports:')
+    clearCache('admin-dashboard:')
     await loadMonth()
   }
 
