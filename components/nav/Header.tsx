@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { apiLogout, IS_DEMO } from '@/lib/api'
+import { clearCache } from '@/lib/cache'
 
 interface HeaderProps {
   userName: string
@@ -35,6 +36,9 @@ export default function Header({ userName, role, empId }: HeaderProps) {
     } else {
       await fetch('/api/auth/logout', { method: 'POST' })
     }
+    // /login への遷移はクライアント側なのでメモリキャッシュが生き残る。
+    // 次に別の人がログインした時に前の人の勤怠データが見えないよう全消しする。
+    clearCache()
     router.push('/login')
     router.refresh()
   }

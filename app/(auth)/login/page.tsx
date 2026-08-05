@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { IS_DEMO, apiLoginUser, apiLoginAdmin, apiChangePassword } from '@/lib/api'
@@ -51,6 +51,25 @@ export default function LoginPage() {
   const [adminPw, setAdminPw] = useState('')
   const [adminError, setAdminError] = useState('')
   const [adminLoading, setAdminLoading] = useState(false)
+
+  // ブラウザのパスワードマネージャは hydrate の後から値を流し込んでくるので、
+  // React の state が空でも DOM 側には前回の入力が残ってしまう。
+  // ログイン画面に来た時点で必ず空から始まるよう、DOM ごと消しておく。
+  const screenRef = useRef<HTMLDivElement>(null)
+  const typedRef = useRef(false)
+  const markTyped = () => { typedRef.current = true }
+
+  useEffect(() => {
+    const clear = () => {
+      if (typedRef.current) return   // 手入力が始まっていたら触らない
+      setEmpId(''); setEmpPw(''); setAdminId(''); setAdminPw('')
+      screenRef.current?.querySelectorAll('input').forEach(el => { el.value = '' })
+    }
+    clear()
+    // 自動入力は描画の直後に遅れて走ることがあるので、もう一度だけ掃除する
+    const t = setTimeout(clear, 150)
+    return () => clearTimeout(t)
+  }, [])
 
   const [showFirstLogin, setShowFirstLogin] = useState(false)
   const [flPw1, setFlPw1] = useState('')
@@ -180,7 +199,7 @@ export default function LoginPage() {
 
   return (
     <>
-      <div className="login-screen">
+      <div className="login-screen" ref={screenRef}>
         <div className="login-container">
           <div className="login-header-bar">
             <div className="login-header-brand">
@@ -221,7 +240,7 @@ export default function LoginPage() {
               </div>
 
               {tab === 'user' ? (
-                <form className="login-form" onSubmit={handleUserLogin}>
+                <form className="login-form" onSubmit={handleUserLogin} autoComplete="off">
                   {userError && <div className="error-msg">{userError}</div>}
                   <div className="field">
                     <label>
@@ -231,9 +250,9 @@ export default function LoginPage() {
                     <input
                       type="text"
                       value={empId}
-                      onChange={e => setEmpId(e.target.value)}
+                      onChange={e => { markTyped(); setEmpId(e.target.value) }}
                       placeholder="IDを入力"
-                      autoComplete="username"
+                      autoComplete="off"
                       list="recent-emp-ids"
                       required
                     />
@@ -253,9 +272,9 @@ export default function LoginPage() {
                     <input
                       type="password"
                       value={empPw}
-                      onChange={e => setEmpPw(e.target.value)}
+                      onChange={e => { markTyped(); setEmpPw(e.target.value) }}
                       placeholder="パスワードを入力"
-                      autoComplete="current-password"
+                      autoComplete="new-password"
                       required
                     />
                   </div>
@@ -264,7 +283,7 @@ export default function LoginPage() {
                   </button>
                 </form>
               ) : (
-                <form className="login-form" onSubmit={handleAdminLogin}>
+                <form className="login-form" onSubmit={handleAdminLogin} autoComplete="off">
                   {adminError && <div className="error-msg">{adminError}</div>}
                   <div className="field">
                     <label>
@@ -274,7 +293,7 @@ export default function LoginPage() {
                     <input
                       type="text"
                       value={adminId}
-                      onChange={e => setAdminId(e.target.value)}
+                      onChange={e => { markTyped(); setAdminId(e.target.value) }}
                       placeholder="IDを入力"
                       autoComplete="off"
                     />
@@ -287,9 +306,9 @@ export default function LoginPage() {
                     <input
                       type="password"
                       value={adminPw}
-                      onChange={e => setAdminPw(e.target.value)}
+                      onChange={e => { markTyped(); setAdminPw(e.target.value) }}
                       placeholder="パスワードを入力"
-                      autoComplete="current-password"
+                      autoComplete="new-password"
                       required
                     />
                   </div>
